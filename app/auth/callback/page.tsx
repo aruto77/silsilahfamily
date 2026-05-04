@@ -9,14 +9,18 @@ export default function AuthCallback() {
   useEffect(() => {
     const supabase = getSupabase();
     
+    const handleSuccess = (session: any) => {
+      if (window.opener && window.name === 'oauth_popup') {
+        window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', session }, '*');
+        window.close();
+      } else {
+        window.location.href = '/dashboard';
+      }
+    };
+
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN') {
-        if (window.opener) {
-          window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', session }, '*');
-          window.close();
-        } else {
-          window.location.href = '/dashboard';
-        }
+        handleSuccess(session);
       }
     });
 
@@ -25,12 +29,7 @@ export default function AuthCallback() {
         setError(error.message);
       }
       if (session) {
-        if (window.opener) {
-             window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', session }, '*');
-             window.close();
-        } else {
-             window.location.href = '/dashboard';
-        }
+        handleSuccess(session);
       }
     }).catch(err => {
       setError(err.message);
