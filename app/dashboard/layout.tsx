@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '../../hooks/use-user';
 import { Sidebar } from '../../components/dashboard/Sidebar';
 import { Topbar } from '../../components/dashboard/Topbar';
+import { AutoLogout } from '../../components/AutoLogout';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, profile, loading } = useUser();
@@ -91,6 +92,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="w-full h-screen bg-slate-50 flex overflow-hidden font-sans text-slate-900">
+      <AutoLogout />
       <Sidebar profile={profile} />
       <main className="flex-1 flex flex-col min-w-0">
         <Topbar profile={profile} />
