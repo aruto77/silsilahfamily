@@ -18,26 +18,31 @@ export default function Dashboard() {
 
   useEffect(() => {
     async function fetchStats() {
-      const supabase = getSupabase();
-      
-      const { count: membersCount } = await supabase.from('family_members').select('*', { count: 'exact', head: true });
-      const { count: marriagesCount } = await supabase.from('marriages').select('*', { count: 'exact', head: true });
-      const { count: requestsCount } = await supabase.from('change_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
-      
-      // Recent additions (last 30 days)
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const { count: recentCount } = await supabase.from('family_members')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', thirtyDaysAgo.toISOString());
+      try {
+        const supabase = getSupabase();
+        
+        const { count: membersCount } = await supabase.from('family_members').select('*', { count: 'exact', head: true });
+        const { count: marriagesCount } = await supabase.from('marriages').select('*', { count: 'exact', head: true });
+        const { count: requestsCount } = await supabase.from('change_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+        
+        // Recent additions (last 30 days)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const { count: recentCount } = await supabase.from('family_members')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', thirtyDaysAgo.toISOString());
 
-      setStats({
-        totalMembers: membersCount || 0,
-        totalMarriages: marriagesCount || 0,
-        pendingRequests: requestsCount || 0,
-        recentAdditions: recentCount || 0
-      });
-      setLoading(false);
+        setStats({
+          totalMembers: membersCount || 0,
+          totalMarriages: marriagesCount || 0,
+          pendingRequests: requestsCount || 0,
+          recentAdditions: recentCount || 0
+        });
+      } catch (error) {
+        console.error("Error fetching stats", error);
+      } finally {
+        setLoading(false);
+      }
     }
     
     fetchStats();
