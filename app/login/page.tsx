@@ -77,25 +77,38 @@ export default function Login() {
       setError(null);
       const supabase = getSupabase();
       const redirectUrl = `${window.location.origin}/auth/callback`;
+
+      // Open popup synchronously to prevent browser popup blockers from blocking it after async logic
+      let popup: Window | null = null;
+      // We check if we might be in an iframe like AI Studio to decide on popup vs full redirect
+      const isIframe = window !== window.top;
+      
+      if (isIframe) {
+        popup = window.open('about:blank', 'oauth_popup', 'width=500,height=600');
+      }
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: redirectUrl,
-          skipBrowserRedirect: true
+          skipBrowserRedirect: isIframe // If it's an iframe, we skip redirect and use popup. Else, redirect normally.
         }
       });
       
       if (error) {
+        if (popup) popup.close();
         throw error;
       }
       
-      if (data?.url) {
-        window.open(data.url, 'oauth_popup', 'width=500,height=600');
+      if (isIframe && data?.url && popup) {
+        popup.location.href = data.url;
       }
     } catch (err: any) {
       setError(err.message || 'Gagal login menggunakan Google.');
     } finally {
-      setLoading(false);
+      // Don't set loading to false if we are not in an iframe and are redirecting
+      const isIframe = window !== window.top;
+      if (isIframe) setLoading(false);
     }
   };
 
