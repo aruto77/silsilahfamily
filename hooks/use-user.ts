@@ -35,15 +35,8 @@ export function useUser() {
           if (!error && data) {
             setProfile(data as UserProfile);
           } else if (error && error.code === 'PGRST116') {
-            // Auto create profile if not found
-            const { data: newProfile, error: insertError } = await supabase
-              .from('users')
-              .insert([{ id: session.user.id, email: session.user.email }])
-              .select()
-              .single();
-            if (!insertError && newProfile) {
-              setProfile(newProfile as UserProfile);
-            }
+            // Profile is created by Supabase Database Trigger. If it's not here yet, we wait for next change.
+            console.warn('Wait for trigger sync...', session.user.id);
           }
         }
       } catch (error) {
@@ -67,15 +60,8 @@ export function useUser() {
           if (!error && data) {
             setProfile(data as UserProfile);
           } else if (error && error.code === 'PGRST116') {
-            // Auto create profile if not found
-            const { data: newProfile, error: insertError } = await supabase
-              .from('users')
-              .insert([{ id: session.user.id, email: session.user.email }])
-              .select()
-              .single();
-            if (!insertError && newProfile) {
-              setProfile(newProfile as UserProfile);
-            }
+            // Profile is created by Supabase Database Trigger. If it's not here yet, we wait for next change.
+            console.warn('Wait for trigger sync...', session.user.id);
           }
         } catch (err) {
           console.error("Error on auth state change profile fetch:", err);
