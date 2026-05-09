@@ -14,8 +14,7 @@ export default function NewMemberPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    first_name: '',
-    last_name: '',
+    full_name: '',
     gender: 'male',
     birth_date: '',
     death_date: '',
@@ -104,30 +103,17 @@ export default function NewMemberPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className="mb-6">
             <div className="space-y-2">
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor="first_name">
-                Nama Depan <span className="text-rose-500">*</span>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor="full_name">
+                Nama Lengkap <span className="text-rose-500">*</span>
               </label>
               <input 
                 type="text" 
-                id="first_name" 
-                name="first_name" 
+                id="full_name" 
+                name="full_name" 
                 required
-                value={formData.first_name}
-                onChange={handleChange}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none transition-all placeholder:text-slate-400" 
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor="last_name">
-                Nama Belakang / Marga
-              </label>
-              <input 
-                type="text" 
-                id="last_name" 
-                name="last_name" 
-                value={formData.last_name}
+                value={formData.full_name}
                 onChange={handleChange}
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none transition-all placeholder:text-slate-400" 
               />
