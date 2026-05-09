@@ -58,7 +58,12 @@ export default function BalkanFamilyTree({ members, marriages }: BalkanFamilyTre
                 field_0: "name",
                 field_1: "birthDate"
             },
-            scaleInitial: FamilyTree.match.boundary
+            scaleInitial: FamilyTree.match.boundary,
+            mouseScrool: FamilyTree.action.zoom,
+            toolbar: {
+                zoom: true,
+                fit: true
+            }
         });
       } catch (e) {
         console.error("FamilyTree initialization error", e);
