@@ -71,7 +71,7 @@ export default function MemberProfilePage() {
               <UserIcon className="w-16 h-16 opacity-50" />
             </div>
             <h1 className="text-2xl font-bold text-slate-800 leading-tight">
-              {member.first_name} {member.last_name}
+              {member.full_name}
             </h1>
             <p className="text-sm text-slate-500 mt-2 font-medium">
               {member.birth_date ? new Date(member.birth_date).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric'}) : 'Tanggal lahir belum dicatat'}
