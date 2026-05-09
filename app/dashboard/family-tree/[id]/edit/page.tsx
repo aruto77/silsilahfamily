@@ -1,30 +1,19 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { getSupabase } from '../../../../../lib/supabase';
-import { useUser } from '../../../../../hooks/use-user';
-import { ArrowLeft, Save } from 'lucide-react';
+import { getSupabase } from '../../../../lib/supabase';
+import { useUser } from '../../../../hooks/use-user';
+import { useParams, useRouter } from 'next/navigation';
+import { ArrowLeft, User as UserIcon, Heart, FileEdit } from 'lucide-react';
 import Link from 'next/link';
 
-export default function EditMemberPage() {
+export default function MemberProfilePage() {
   const params = useParams();
   const id = params.id as string;
   const router = useRouter();
   const { profile } = useUser();
-  const [loading, setLoading] = useState(false);
-  const [initialFetchLoading, setInitialFetchLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const [formData, setFormData] = useState({
-    first_name: '',
-    last_name: '',
-    gender: 'male',
-    birth_date: '',
-    death_date: '',
-    bio: '',
-    is_adopted: false
-  });
+  const [member, setMember] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchMember() {
@@ -35,234 +24,121 @@ export default function EditMemberPage() {
         .eq('id', id)
         .single();
       
-      if (!error && data) {
-        setFormData({
-          first_name: data.first_name || '',
-          last_name: data.last_name || '',
-          gender: data.gender || 'male',
-          birth_date: data.birth_date ? new Date(data.birth_date).toISOString().split('T')[0] : '',
-          death_date: data.death_date ? new Date(data.death_date).toISOString().split('T')[0] : '',
-          bio: data.bio || '',
-          is_adopted: data.is_adopted || false
-        });
+      if (error) {
+        console.error(error);
+      } else {
+        setMember(data);
       }
-      setInitialFetchLoading(false);
+      setLoading(false);
     }
     
     if (id) fetchMember();
   }, [id]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    try {
-      const supabase = getSupabase();
-      
-      const payload = {
-        ...formData,
-        birth_date: formData.birth_date || null,
-        death_date: formData.death_date || null,
-      };
-
-      if (profile?.role === 'admin') {
-        // Admins can update directly
-        const { error: updateError } = await supabase
-          .from('family_members')
-          .update(payload)
-          .eq('id', id);
-
-        if (updateError) throw updateError;
-        router.push(`/dashboard/family-tree/${id}`);
-      } else {
-        // Fetch old data for diff
-        const { data: oldData } = await supabase.from('family_members').select('*').eq('id', id).single();
-        
-        // Members must create a change request
-        const { error: requestError } = await supabase
-          .from('change_requests')
-          .insert([{
-            requester_id: profile?.id,
-            target_id: id,
-            target_table: 'family_members',
-            old_data: oldData,
-            new_data: payload,
-            status: 'pending'
-          }]);
-
-        if (requestError) throw requestError;
-        router.push('/dashboard/my-requests');
-      }
-    } catch (err: any) {
-      setError(err.message || 'An error occurred while saving.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (initialFetchLoading) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center p-12">
+      <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!member) {
+    return (
+      <div className="text-center p-12">
+        <h2 className="text-xl font-bold text-slate-800">Profil Tidak Ditemukan</h2>
+        <button onClick={() => router.back()} className="mt-4 text-indigo-600 hover:text-indigo-700 font-medium">Kembali</button>
       </div>
     );
   }
 
   return (
     <>
-      <div className="mb-8">
-        <Link 
-          href={`/dashboard/family-tree/${id}`} 
+      <div className="mb-6">
+        <button 
+          onClick={() => router.back()}
           className="inline-flex items-center text-sm font-semibold text-slate-500 hover:text-indigo-600 transition-colors mb-4"
         >
           <ArrowLeft className="w-4 h-4 mr-1" />
-          Batal
-        </Link>
-        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Edit Data Anggota Keluarga</h1>
-        <p className="text-slate-500 mt-1">
-          {profile?.role === 'admin' 
-            ? 'Perubahan ini akan langsung diperbarui dalam database.' 
-            : 'Perubahan ini akan dikirim sebagai usulan untuk ditinjau oleh admin.'}
-        </p>
+          Kembali
+        </button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm max-w-3xl">
-        <form onSubmit={handleSubmit} className="p-8">
-          {error && (
-            <div className="mb-6 p-4 bg-rose-50 border border-rose-100 text-rose-600 text-sm font-medium rounded-xl">
-              {error}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="md:col-span-1">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 flex flex-col items-center text-center">
+            <div className={`w-32 h-32 rounded-full flex items-center justify-center mb-6 shadow-iner ${member.gender === 'male' ? 'bg-indigo-100 text-indigo-600' : 'bg-rose-100 text-rose-600'}`}>
+              <UserIcon className="w-16 h-16 opacity-50" />
             </div>
-          )}
+            <h1 className="text-2xl font-bold text-slate-800 leading-tight">
+              {member.full_name}
+            </h1>
+            <p className="text-sm text-slate-500 mt-2 font-medium">
+              {member.birth_date ? new Date(member.birth_date).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric'}) : 'Tanggal lahir belum dicatat'}
+              {member.death_date && ` - ${new Date(member.death_date).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric'})}`}
+            </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div className="space-y-2">
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor="first_name">
-                Nama Depan <span className="text-rose-500">*</span>
-              </label>
-              <input 
-                type="text" 
-                id="first_name" 
-                name="first_name" 
-                required
-                value={formData.first_name}
-                onChange={handleChange}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none transition-all placeholder:text-slate-400" 
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor="last_name">
-                Nama Belakang / Marga
-              </label>
-              <input 
-                type="text" 
-                id="last_name" 
-                name="last_name" 
-                value={formData.last_name}
-                onChange={handleChange}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none transition-all placeholder:text-slate-400" 
-              />
-            </div>
-          </div>
+            <div className="w-full h-px bg-slate-100 my-6"></div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div className="space-y-2">
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor="gender">
-                Jenis Kelamin <span className="text-rose-500">*</span>
-              </label>
-              <select 
-                id="gender" 
-                name="gender" 
-                required
-                value={formData.gender}
-                onChange={handleChange}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none transition-all text-slate-700"
+            <div className="w-full flex gap-3">
+              <Link 
+                href={`/dashboard/family-tree/${member.id}/edit`}
+                className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-indigo-50 text-indigo-700 font-medium rounded-xl hover:bg-indigo-100 transition-colors"
+                title={profile?.role !== 'admin' ? "Ajukan perubahan untuk profil ini" : "Edit profil ini"}
               >
-                <option value="male">Laki-laki</option>
-                <option value="female">Perempuan</option>
-                <option value="other">Lainnya</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor="birth_date">
-                Tanggal Lahir
-              </label>
-              <input 
-                type="date" 
-                id="birth_date" 
-                name="birth_date" 
-                value={formData.birth_date}
-                onChange={handleChange}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none transition-all text-slate-700" 
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor="death_date">
-                Tanggal Wafat (Opsional)
-              </label>
-              <input 
-                type="date" 
-                id="death_date" 
-                name="death_date" 
-                value={formData.death_date}
-                onChange={handleChange}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none transition-all text-slate-700" 
-              />
+                <FileEdit className="w-4 h-4 mr-2" />
+                {profile?.role === 'admin' ? 'Edit Data' : 'Usulkan Ubah'}
+              </Link>
             </div>
           </div>
+        </div>
 
-          <div className="space-y-2 mb-6">
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor="bio">
-              Biografi Singkat
-            </label>
-            <textarea 
-              id="bio" 
-              name="bio" 
-              rows={4}
-              value={formData.bio}
-              onChange={handleChange}
-              placeholder="Tambahkan informasi tambahan..."
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none transition-all placeholder:text-slate-400 resize-y" 
-            />
+        <div className="md:col-span-2 space-y-8">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
+             <h3 className="font-bold text-slate-800 mb-6 flex items-center">
+               <UserIcon className="w-5 h-5 mr-2 text-slate-400" />
+               Informasi Pribadi
+             </h3>
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+               <div>
+                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Status Kehidupan</p>
+                 <p className="font-medium text-slate-700">
+                    {member.death_date ? <span className="text-rose-600 font-semibold">Almarhum/ah</span> : <span className="text-emerald-600 font-semibold">Hidup</span>}
+                 </p>
+               </div>
+               <div>
+                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Jenis Kelamin</p>
+                 <p className="font-medium text-slate-700 capitalize">
+                    {member.gender === 'male' ? 'Laki-laki' : member.gender === 'female' ? 'Perempuan' : member.gender}
+                 </p>
+               </div>
+               <div>
+                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Status Anak</p>
+                 <p className="font-medium text-slate-700">
+                    {member.is_adopted ? 'Diadopsi' : 'Anak Kandung'}
+                 </p>
+               </div>
+               <div className="sm:col-span-2">
+                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Biografi</p>
+                 <p className="text-sm text-slate-600 whitespace-pre-wrap mt-1">
+                    {member.bio || <span className="italic text-slate-400">Belum ada biografi yang ditulis.</span>}
+                 </p>
+               </div>
+             </div>
           </div>
 
-          <div className="flex items-center space-x-3 mb-8 p-4 bg-slate-50 rounded-xl border border-slate-100">
-            <input 
-              type="checkbox" 
-              id="is_adopted" 
-              name="is_adopted"
-              checked={formData.is_adopted}
-              onChange={handleChange}
-              className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer"
-            />
-            <label htmlFor="is_adopted" className="text-sm font-medium text-slate-700 cursor-pointer">
-              Anggota keluarga angkat/adopsi
-            </label>
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
+             <h3 className="font-bold text-slate-800 mb-6 flex items-center">
+               <Heart className="w-5 h-5 mr-2 text-rose-400" />
+               Keluarga Inti
+             </h3>
+             <div className="space-y-4">
+                <p className="text-slate-500 text-sm text-center py-4 bg-slate-50 rounded-xl border border-slate-100">
+                  Visualisasi keluarga (Pasangan & Anak) akan dimuat di sini...
+                </p>
+             </div>
           </div>
-
-          <div className="flex justify-end pt-4 border-t border-slate-100">
-            <button 
-              type="submit" 
-              disabled={loading}
-              className="flex items-center justify-center px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
-              ) : (
-                <Save className="w-4 h-4 mr-2" />
-              )}
-              {profile?.role === 'admin' ? 'Simpan Perubahan' : 'Kirim Usulan'}
-            </button>
-          </div>
-        </form>
+        </div>
       </div>
     </>
   );
