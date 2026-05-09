@@ -6,8 +6,7 @@ import FamilyTree from '@balkangraph/familytree.js';
 
 interface Member {
   id: string;
-  first_name: string;
-  last_name: string | null;
+  full_name: string;
   father_id: string | null;
   mother_id: string | null;
   gender: string;
@@ -45,7 +44,7 @@ export default function BalkanFamilyTree({ members, marriages }: BalkanFamilyTre
         pids: pids.length > 0 ? pids : undefined,
         mid: m.mother_id || undefined,
         fid: m.father_id || undefined,
-        name: `${m.first_name} ${m.last_name || ''}`.trim(),
+        name: m.full_name,
         gender: m.gender,
         birthDate: m.birth_date ? new Date(m.birth_date).getFullYear().toString() : ''
       };
