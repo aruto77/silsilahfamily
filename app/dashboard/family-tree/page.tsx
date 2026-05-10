@@ -199,43 +199,29 @@ export default function FamilyTreePage() {
                     <p className="text-xs text-slate-500">{selectedFamily.parents.length} Orang Tua, {selectedFamily.children.length} Anak</p>
                   </div>
                 </div>
-                
-                <div className="flex gap-2 text-xs flex-wrap">
-                   {selectedFamily.parents.map(parent => {
-                      const parentFamily = families.find(f => f.children.some(c => c.id === parent.id));
-                      return parentFamily ? (
-                        <button 
-                          key={`up-${parent.id}`} 
-                          onClick={() => setSelectedFamily(parentFamily)}
-                          className="bg-white text-slate-600 border border-slate-200 px-2.5 py-1 rounded-md shadow-sm hover:bg-slate-50 transition-colors flex items-center gap-1.5 hover:border-indigo-300 hover:text-indigo-700"
-                          title={`Lihat orang tua dari ${parent.full_name}`}
-                        >
-                          <ArrowLeft className="w-3 h-3 text-slate-400" />
-                          <span>Asal {parent.full_name.split(' ')[0]}</span>
-                        </button>
-                      ) : null;
-                   })}
-                   {selectedFamily.children.map(child => {
-                      const childFamily = families.find(f => f.parents.some(p => p.id === child.id));
-                      return childFamily ? (
-                        <button 
-                          key={`down-${child.id}`} 
-                          onClick={() => setSelectedFamily(childFamily)}
-                          className="bg-white text-slate-600 border border-slate-200 px-2.5 py-1 rounded-md shadow-sm hover:bg-slate-50 transition-colors flex items-center gap-1.5 hover:border-indigo-300 hover:text-indigo-700"
-                          title={`Lihat keluarga dari ${child.full_name}`}
-                        >
-                          <span>Keluarga {child.full_name.split(' ')[0]}</span>
-                          <ArrowLeft className="w-3 h-3 rotate-180 text-slate-400" />
-                        </button>
-                      ) : null;
-                   })}
-                </div>
               </div>
             )}
             <div className="flex-1 relative">
               <BalkanFamilyTree 
                 members={selectedFamily ? [...selectedFamily.parents, ...selectedFamily.children] : members} 
                 marriages={selectedFamily ? (selectedFamily.marriage ? [selectedFamily.marriage] : []) : marriages} 
+                onNodeClick={(id, action) => {
+                  if (action === 'viewAsChild') {
+                    const parentFamily = families.find(f => f.children.some(c => c.id === id));
+                    if (parentFamily) {
+                      setSelectedFamily(parentFamily);
+                    } else {
+                      alert('Orang ini tidak memiliki orang tua di data silsilah (belum dicatat sebagai anak dari keluarga manapun).');
+                    }
+                  } else if (action === 'viewAsParent') {
+                    const childFamily = families.find(f => f.parents.some(p => p.id === id));
+                    if (childFamily) {
+                      setSelectedFamily(childFamily);
+                    } else {
+                      alert('Orang ini tidak memiliki anak/pasangan di data silsilah (belum dicatat memiliki keluarga inti sendiri).');
+                    }
+                  }
+                }}
               />
             </div>
           </div>
