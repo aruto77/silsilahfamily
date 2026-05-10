@@ -107,7 +107,7 @@ export default function EditMemberPage() {
           .eq('id', id);
 
         if (updateError) throw updateError;
-        router.push(`/dashboard/family-tree/${id}`);
+        router.replace(`/dashboard/family-tree/${id}`);
       } else {
         // Fetch old data for diff
         const { data: oldData } = await supabase.from('family_members').select('*').eq('id', id).single();
