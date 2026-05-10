@@ -47,7 +47,7 @@ export default function MemberProfilePage() {
     return (
       <div className="text-center p-12">
         <h2 className="text-xl font-bold text-slate-800">Profil Tidak Ditemukan</h2>
-        <button onClick={() => router.back()} className="mt-4 text-indigo-600 hover:text-indigo-700 font-medium">Kembali</button>
+        <Link href="/dashboard/family-tree" className="mt-4 inline-block text-indigo-600 hover:text-indigo-700 font-medium">Kembali</Link>
       </div>
     );
   }
@@ -55,13 +55,13 @@ export default function MemberProfilePage() {
   return (
     <>
       <div className="mb-6">
-        <button 
-          onClick={() => router.back()}
+        <Link 
+          href="/dashboard/family-tree"
           className="inline-flex items-center text-sm font-semibold text-slate-500 hover:text-indigo-600 transition-colors mb-4"
         >
           <ArrowLeft className="w-4 h-4 mr-1" />
-          Kembali
-        </button>
+          Kembali ke Pohon Silsilah
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
