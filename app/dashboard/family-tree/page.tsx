@@ -29,6 +29,9 @@ export default function FamilyTreePage() {
   const viewMode = overrideViewMode || (isAdmin ? 'full' : 'grouped');
   const [selectedFamily, setSelectedFamily] = useState<NuclearFamily | null>(null);
 
+  const [customModalMemberId, setCustomModalMemberId] = useState<string | null>(null);
+  const activeMember = useMemo(() => members.find(m => m.id === customModalMemberId), [members, customModalMemberId]);
+
   useEffect(() => {
     async function fetchData() {
       const supabase = getSupabase();
@@ -205,28 +208,90 @@ export default function FamilyTreePage() {
               <BalkanFamilyTree 
                 members={selectedFamily ? [...selectedFamily.parents, ...selectedFamily.children] : members} 
                 marriages={selectedFamily ? (selectedFamily.marriage ? [selectedFamily.marriage] : []) : marriages} 
-                onNodeClick={(id, action) => {
-                  if (action === 'viewAsChild') {
-                    const parentFamily = families.find(f => f.children.some(c => c.id === id));
-                    if (parentFamily) {
-                      setSelectedFamily(parentFamily);
-                    } else {
-                      alert('Orang ini tidak memiliki orang tua di data silsilah (belum dicatat sebagai anak dari keluarga manapun).');
-                    }
-                  } else if (action === 'viewAsParent') {
-                    const childFamily = families.find(f => f.parents.some(p => p.id === id));
-                    if (childFamily) {
-                      setSelectedFamily(childFamily);
-                    } else {
-                      alert('Orang ini tidak memiliki anak/pasangan di data silsilah (belum dicatat memiliki keluarga inti sendiri).');
-                    }
-                  }
+                onNodeClick={(id) => {
+                   setCustomModalMemberId(id);
                 }}
               />
             </div>
           </div>
         )}
       </div>
+
+      {activeMember && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
+            <div className="p-6 pb-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+               <div>
+                  <h3 className="font-bold text-slate-800 text-lg">{activeMember.full_name}</h3>
+                  <p className="text-xs text-slate-500">
+                    {activeMember.birth_date ? new Date(activeMember.birth_date).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric'}) : 'Tanggal lahir belum dicatat'}
+                  </p>
+               </div>
+               <button onClick={() => setCustomModalMemberId(null)} className="p-2 text-2xl leading-none bg-white rounded-lg hover:bg-slate-100 text-slate-500 border border-slate-200 shadow-sm">&times;</button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <Link
+                  href={`/dashboard/family-tree/${activeMember.id}`}
+                  className="w-full inline-flex items-center justify-center px-4 py-2.5 bg-indigo-50 text-indigo-700 font-medium rounded-xl hover:bg-indigo-100 transition-colors"
+                >
+                  Lihat Detail Penuh
+              </Link>
+              
+              <div className="h-px bg-slate-100 my-4" />
+
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-slate-400 uppercase mb-2">Navigasi Silsilah</p>
+                
+                {(() => {
+                  const parentFamily = families.find(f => f.children.some(c => c.id === activeMember.id));
+                  if (parentFamily) {
+                    return (
+                       <button
+                         onClick={() => {
+                           setOverrideViewMode('grouped');
+                           setSelectedFamily(parentFamily);
+                           setCustomModalMemberId(null);
+                         }}
+                         className="w-full text-left px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium hover:bg-white hover:border-indigo-300 transition-colors flex items-center"
+                       >
+                          <ArrowLeft className="w-4 h-4 mr-2 text-slate-500" />
+                          Lihat Sebagai Anak (Keluarga {parentFamily.parents[0]?.full_name})
+                       </button>
+                    )
+                  }
+                  return null;
+                })()}
+
+                {(() => {
+                  const memberFamilies = families.filter(f => f.parents.some(p => p.id === activeMember.id));
+                  if (memberFamilies.length > 0) {
+                    return memberFamilies.map((fam, idx) => {
+                      const pasangan = fam.parents.find(p => p.id !== activeMember.id);
+                      const text = pasangan ? `Lihat Unit Keluarga dengan ${pasangan.full_name}` : `Lihat Unit Keluarga (Single Parent)`;
+                      return (
+                       <button
+                         key={fam.id}
+                         onClick={() => {
+                           setOverrideViewMode('grouped');
+                           setSelectedFamily(fam);
+                           setCustomModalMemberId(null);
+                         }}
+                         className="w-full text-left px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium hover:bg-white hover:border-indigo-300 transition-colors flex items-center mt-2"
+                       >
+                          <Users className="w-4 h-4 mr-2 text-slate-500" />
+                          {text}
+                       </button>
+                      );
+                    });
+                  }
+                  return null;
+                })()}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
