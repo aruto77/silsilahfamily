@@ -11,6 +11,7 @@ interface Member {
   mother_id: string | null;
   gender: string;
   birth_date: string | null;
+  photo_url: string | null;
 }
 
 interface Marriage {
@@ -47,7 +48,8 @@ export default function BalkanFamilyTree({ members, marriages, onNodeClick }: Ba
         fid: m.father_id || undefined,
         name: m.full_name,
         gender: m.gender,
-        birthDate: m.birth_date ? new Date(m.birth_date).getFullYear().toString() : ''
+        birthDate: m.birth_date ? new Date(m.birth_date).getFullYear().toString() : '',
+        img: m.photo_url || ''
       };
     });
 
@@ -56,7 +58,8 @@ export default function BalkanFamilyTree({ members, marriages, onNodeClick }: Ba
         internalTreeRef.current = new FamilyTree(treeRef.current, {
             nodeBinding: {
                 field_0: "name",
-                field_1: "birthDate"
+                field_1: "birthDate",
+                img_0: "img"
             },
             scaleInitial: FamilyTree.match.boundary,
             mouseScrool: FamilyTree.action.zoom,
