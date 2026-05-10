@@ -22,6 +22,16 @@ export default function NewMemberPage() {
     is_adopted: false
   });
 
+  const [addSpouse, setAddSpouse] = useState(false);
+  const [spouseData, setSpouseData] = useState({
+    full_name: '',
+    gender: 'female',
+    birth_date: '',
+    death_date: '',
+    photo_url: '',
+    is_adopted: false
+  });
+
   const [members, setMembers] = useState<any[]>([]);
   const [relatedMemberId, setRelatedMemberId] = useState<string>('');
   const [relationType, setRelationType] = useState<'anak_dari' | 'orang_tua_dari' | 'pasangan_dari'>('anak_dari');
@@ -72,6 +82,17 @@ export default function NewMemberPage() {
       ...prev,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
     }));
+    if (name === 'gender') {
+       setSpouseData(prev => ({ ...prev, gender: value === 'male' ? 'female' : 'male' }));
+    }
+  };
+
+  const handleSpouseChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target;
+    setSpouseData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -89,27 +110,49 @@ export default function NewMemberPage() {
         death_date: formData.death_date || null,
       };
 
+      if (addSpouse) {
+        payload._new_spouse_request = {
+          ...spouseData,
+          birth_date: spouseData.birth_date || null,
+          death_date: spouseData.death_date || null,
+        };
+        // Setup marriage request linking the two new members
+        payload._marriage_request = {
+          husband_id: formData.gender === 'male' ? 'NEW_MEMBER' : 'NEW_SPOUSE',
+          wife_id: formData.gender === 'female' ? 'NEW_MEMBER' : 'NEW_SPOUSE',
+        };
+      }
+
       if (relatedMemberId && relationType) {
         const related = members.find(m => m.id === relatedMemberId);
         if (related) {
           if (relationType === 'anak_dari') {
             if (related.gender === 'male') payload.father_id = related.id;
             if (related.gender === 'female') payload.mother_id = related.id;
+            
+            // If they are a child of 'related' and they chose to also add a spouse, the spouse doesn't get related.id as parent.
           } else if (relationType === 'orang_tua_dari') {
             payload._update_child_request = {
               child_id: related.id,
               parent_type: formData.gender === 'male' ? 'father_id' : 'mother_id'
             };
+            // If they also chose addSpouse, the other parent is the spouse
+            if (addSpouse) {
+              payload._update_child_request.spouse_parent_type = formData.gender === 'male' ? 'mother_id' : 'father_id';
+            }
           } else if (relationType === 'pasangan_dari') {
-            payload._marriage_request = {
-              husband_id: formData.gender === 'male' ? 'NEW_MEMBER' : related.id,
-              wife_id: formData.gender === 'female' ? 'NEW_MEMBER' : related.id,
-            };
+            // Can't choose "add spouse" AND "pasangan dari" from existing
+            if (!addSpouse) {
+              payload._marriage_request = {
+                husband_id: formData.gender === 'male' ? 'NEW_MEMBER' : related.id,
+                wife_id: formData.gender === 'female' ? 'NEW_MEMBER' : related.id,
+              };
+            }
           }
         }
       }
 
-      const { _marriage_request, _update_child_request, ...realData } = payload;
+      const { _marriage_request, _update_child_request, _new_spouse_request, ...realData } = payload;
 
       if (profile?.role === 'admin') {
         // Admins can insert directly
@@ -120,20 +163,30 @@ export default function NewMemberPage() {
           .single();
 
         if (insertError) throw insertError;
+        
+        let newSpouseId = null;
+        if (_new_spouse_request) {
+           const { data: spouseRes } = await supabase.from('family_members').insert([_new_spouse_request]).select().single();
+           if (spouseRes) newSpouseId = spouseRes.id;
+        }
 
         if (_marriage_request && data) {
            const marriagePayload = {
-               husband_id: _marriage_request.husband_id === 'NEW_MEMBER' ? data.id : _marriage_request.husband_id,
-               wife_id: _marriage_request.wife_id === 'NEW_MEMBER' ? data.id : _marriage_request.wife_id,
+               husband_id: _marriage_request.husband_id === 'NEW_MEMBER' ? data.id : (_marriage_request.husband_id === 'NEW_SPOUSE' ? newSpouseId : _marriage_request.husband_id),
+               wife_id: _marriage_request.wife_id === 'NEW_MEMBER' ? data.id : (_marriage_request.wife_id === 'NEW_SPOUSE' ? newSpouseId : _marriage_request.wife_id),
                status: 'active'
            };
            await supabase.from('marriages').insert([marriagePayload]);
         }
 
         if (_update_child_request && data) {
-           await supabase.from('family_members').update({
+           const childUpdatePayload: any = {
                [_update_child_request.parent_type]: data.id
-           }).eq('id', _update_child_request.child_id);
+           };
+           if (_update_child_request.spouse_parent_type && newSpouseId) {
+               childUpdatePayload[_update_child_request.spouse_parent_type] = newSpouseId;
+           }
+           await supabase.from('family_members').update(childUpdatePayload).eq('id', _update_child_request.child_id);
         }
 
         router.push(`/dashboard/family-tree/${data.id}`);
@@ -277,6 +330,88 @@ export default function NewMemberPage() {
             <label htmlFor="is_adopted" className="text-sm font-medium text-slate-700 cursor-pointer">
               Anak Angkat/Tiri (Ya)
             </label>
+          </div>
+
+          <div className="mb-8">
+            <div className="flex items-center space-x-3 p-4 bg-slate-50 rounded-xl border border-slate-100 mb-4">
+              <input 
+                type="checkbox" 
+                id="add_spouse" 
+                name="add_spouse"
+                checked={addSpouse}
+                onChange={(e) => setAddSpouse(e.target.checked)}
+                disabled={relatedMemberId !== '' && relationType === 'pasangan_dari'}
+                className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+              <label htmlFor="add_spouse" className={`text-sm font-medium text-slate-700 cursor-pointer ${relatedMemberId !== '' && relationType === 'pasangan_dari' ? 'opacity-50' : ''}`}>
+                Tambahkan Sekalian Pasangan (Opsional)
+              </label>
+            </div>
+            
+            {addSpouse && (
+              <div className="p-6 border border-indigo-200 bg-indigo-50/50 rounded-2xl mb-8 space-y-6">
+                <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider mb-2">Data Pasangan</h3>
+                
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor="spouse_full_name">
+                    Nama Lengkap Pasangan <span className="text-rose-500">*</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    id="spouse_full_name" 
+                    name="full_name" 
+                    required={addSpouse}
+                    value={spouseData.full_name}
+                    onChange={handleSpouseChange}
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none transition-all placeholder:text-slate-400" 
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor="spouse_gender">
+                      Jenis Kelamin
+                    </label>
+                    <select 
+                      id="spouse_gender" 
+                      name="gender" 
+                      value={spouseData.gender}
+                      onChange={handleSpouseChange}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none transition-all text-slate-700 disabled:opacity-70"
+                    >
+                      <option value="male">Laki-laki</option>
+                      <option value="female">Perempuan</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor="spouse_birth_date">
+                      Tanggal Lahir
+                    </label>
+                    <input 
+                      type="date" 
+                      id="spouse_birth_date" 
+                      name="birth_date" 
+                      value={spouseData.birth_date}
+                      onChange={handleSpouseChange}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none transition-all text-slate-700"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor="spouse_death_date">
+                      Tanggal Meninggal (Opsional)
+                    </label>
+                    <input 
+                      type="date" 
+                      id="spouse_death_date" 
+                      name="death_date" 
+                      value={spouseData.death_date}
+                      onChange={handleSpouseChange}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none transition-all text-slate-700"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {!dataLoading && members.length > 0 && (
