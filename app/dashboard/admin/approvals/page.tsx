@@ -58,7 +58,7 @@ export default function AdminApprovalsPage() {
     try {
       // If approved, we need to apply the changes to the target table
       if (action === 'approved') {
-        const { _marriage_request, ...realData } = newData;
+        const { _marriage_request, _update_child_request, _new_spouse_request, ...realData } = newData;
         let newTargetId = targetId;
 
         if (targetId && targetId !== '00000000-0000-0000-0000-000000000000') {
@@ -70,13 +70,29 @@ export default function AdminApprovalsPage() {
            if (data) newTargetId = data.id;
         }
 
+        let newSpouseId = null;
+        if (_new_spouse_request) {
+           const { data: spouseData } = await supabase.from('family_members').insert([_new_spouse_request]).select().single();
+           if (spouseData) newSpouseId = spouseData.id;
+        }
+
         if (_marriage_request && newTargetId) {
             const marriagePayload = {
-               husband_id: _marriage_request.husband_id === 'NEW_MEMBER' ? newTargetId : _marriage_request.husband_id,
-               wife_id: _marriage_request.wife_id === 'NEW_MEMBER' ? newTargetId : _marriage_request.wife_id,
+               husband_id: _marriage_request.husband_id === 'NEW_MEMBER' ? newTargetId : (_marriage_request.husband_id === 'NEW_SPOUSE' ? newSpouseId : _marriage_request.husband_id),
+               wife_id: _marriage_request.wife_id === 'NEW_MEMBER' ? newTargetId : (_marriage_request.wife_id === 'NEW_SPOUSE' ? newSpouseId : _marriage_request.wife_id),
                status: 'active'
             };
             await supabase.from('marriages').insert([marriagePayload]);
+        }
+
+        if (_update_child_request && newTargetId) {
+            const childUpdatePayload: any = {
+               [_update_child_request.parent_type]: newTargetId
+            };
+            if (_update_child_request.spouse_parent_type && newSpouseId) {
+                childUpdatePayload[_update_child_request.spouse_parent_type] = newSpouseId;
+            }
+            await supabase.from('family_members').update(childUpdatePayload).eq('id', _update_child_request.child_id);
         }
       }
 
