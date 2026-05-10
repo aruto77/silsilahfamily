@@ -21,7 +21,7 @@ interface Marriage {
 interface BalkanFamilyTreeProps {
   members: Member[];
   marriages: Marriage[];
-  onNodeClick?: (id: string, action: string) => void;
+  onNodeClick?: (id: string) => void;
 }
 
 export default function BalkanFamilyTree({ members, marriages, onNodeClick }: BalkanFamilyTreeProps) {
@@ -63,30 +63,13 @@ export default function BalkanFamilyTree({ members, marriages, onNodeClick }: Ba
             toolbar: {
                 zoom: true,
                 fit: true
-            },
-            editForm: {
-                buttons: {
-                    edit: null,
-                    share: null,
-                    pdf: null,
-                    remove: null,
-                    viewAsChild: {
-                        icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-up"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>',
-                        text: 'Lihat Sebagai Anak'
-                    },
-                    viewAsParent: {
-                        icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-down"><path d="m19 12-7 7-7-7"/><path d="M12 5v14"/></svg>',
-                        text: 'Lihat Keluarganya'
-                    }
-                }
             }
         });
 
         if (onNodeClick) {
-           internalTreeRef.current.editUI.on('button-click', function(sender: any, args: any) {
-               if (args.name === 'viewAsChild' || args.name === 'viewAsParent') {
-                   onNodeClick(args.nodeId, args.name);
-               }
+           internalTreeRef.current.on('click', function(sender: any, args: any) {
+               onNodeClick(args.node.id);
+               return false;
            });
         }
       } catch (e) {
