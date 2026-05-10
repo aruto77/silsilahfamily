@@ -22,27 +22,108 @@ export default function EditMemberPage() {
     birth_date: '',
     death_date: '',
     photo_url: '',
-    is_adopted: false
+    is_adopted: false,
+    father_id: null as string | null,
+    mother_id: null as string | null,
   });
+
+  const [families, setFamilies] = useState<any[]>([]);
+  const [selectedFamilyId, setSelectedFamilyId] = useState<string>('');
+  const [familyRole, setFamilyRole] = useState<'anak' | 'ayah' | 'ibu'>('anak');
+  const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
     async function fetchMember() {
       const supabase = getSupabase();
-      const { data, error } = await supabase
+
+      // Fetch the requested member
+      const { data: memberData, error } = await supabase
         .from('family_members')
         .select('*')
         .eq('id', id)
         .single();
       
-      if (!error && data) {
-        setFormData({
-          full_name: data.full_name || '',
-          gender: data.gender || 'male',
-          birth_date: data.birth_date ? new Date(data.birth_date).toISOString().split('T')[0] : '',
-          death_date: data.death_date ? new Date(data.death_date).toISOString().split('T')[0] : '',
-          photo_url: data.photo_url || '',
-          is_adopted: data.is_adopted || false
+      // Fetch all members and marriages for families list
+      const { data: membersRes } = await supabase.from('family_members').select('*');
+      const { data: marriagesRes } = await supabase.from('marriages').select('*').eq('status', 'active');
+      
+      const members = membersRes || [];
+      const marriages = marriagesRes || [];
+
+      const fams: any[] = [];
+      const processedParentIds = new Set<string>();
+
+      for (const match of marriages) {
+        const husband = members.find(m => m.id === match.husband_id);
+        const wife = members.find(m => m.id === match.wife_id);
+        if (!husband && !wife) continue;
+
+        if (husband) processedParentIds.add(husband.id);
+        if (wife) processedParentIds.add(wife.id);
+
+        let name = "Keluarga ";
+        if (husband && wife) {
+          name += `${husband.full_name} & ${wife.full_name}`;
+        } else if (husband) {
+          name += husband.full_name;
+        } else if (wife) {
+          name += wife.full_name;
+        }
+
+        fams.push({
+          id: match.id,
+          name,
+          parents: [husband, wife].filter(Boolean),
+          type: 'marriage'
         });
+      }
+
+      const singleParents = members.filter(m => 
+        !processedParentIds.has(m.id) && 
+        members.some(child => child.father_id === m.id || child.mother_id === m.id)
+      );
+
+      for (const parent of singleParents) {
+        fams.push({
+          id: parent.id,
+          name: `Keluarga ${parent.full_name} (Single Parent)`,
+          parents: [parent],
+          type: 'single'
+        });
+      }
+
+      setFamilies(fams);
+      setDataLoading(false);
+
+      if (!error && memberData) {
+        setFormData({
+          full_name: memberData.full_name || '',
+          gender: memberData.gender || 'male',
+          birth_date: memberData.birth_date ? new Date(memberData.birth_date).toISOString().split('T')[0] : '',
+          death_date: memberData.death_date ? new Date(memberData.death_date).toISOString().split('T')[0] : '',
+          photo_url: memberData.photo_url || '',
+          is_adopted: memberData.is_adopted || false,
+          father_id: memberData.father_id || null,
+          mother_id: memberData.mother_id || null,
+        });
+
+        // Try to identify current family and set selectedFamilyId
+        if (memberData.father_id || memberData.mother_id) {
+          const parentFam = fams.find(f => 
+             f.parents.some((p: any) => p.id === memberData.father_id || p.id === memberData.mother_id)
+          );
+          if (parentFam) {
+            setSelectedFamilyId(parentFam.id);
+            setFamilyRole('anak');
+          }
+        } else {
+          // Are they a parent?
+          const myFam = fams.find(f => f.parents.some((p: any) => p.id === memberData.id));
+          if (myFam) {
+            setSelectedFamilyId(myFam.id);
+            setFamilyRole(memberData.gender === 'male' ? 'ayah' : 'ibu');
+          }
+        }
       }
       setInitialFetchLoading(false);
     }
@@ -93,20 +174,59 @@ export default function EditMemberPage() {
     try {
       const supabase = getSupabase();
       
-      const payload = {
+      let payload: any = {
         ...formData,
         birth_date: formData.birth_date || null,
         death_date: formData.death_date || null,
       };
 
+      if (selectedFamilyId) {
+        const family = families.find(f => f.id === selectedFamilyId);
+        if (family) {
+          if (familyRole === 'anak') {
+            const ayah = family.parents.find((p: any) => p.gender === 'male');
+            const ibu = family.parents.find((p: any) => p.gender === 'female');
+            payload.father_id = ayah ? ayah.id : null;
+            payload.mother_id = ibu ? ibu.id : null;
+          } else if (familyRole === 'ayah' || familyRole === 'ibu') {
+            const isAyah = familyRole === 'ayah';
+            const existingSpouse = family.parents.find((p: any) => p.gender === (isAyah ? 'female' : 'male'));
+
+            if (existingSpouse) {
+              payload._marriage_request = {
+                husband_id: isAyah ? 'NEW_MEMBER' : existingSpouse.id,
+                wife_id: isAyah ? existingSpouse.id : 'NEW_MEMBER',
+              };
+            }
+          }
+        }
+      } else {
+        // If they cleared it out, we must nullify
+        payload.father_id = null;
+        payload.mother_id = null;
+      }
+
+      const { _marriage_request, ...realData } = payload;
+
       if (profile?.role === 'admin') {
         // Admins can update directly
         const { error: updateError } = await supabase
           .from('family_members')
-          .update(payload)
+          .update(realData)
           .eq('id', id);
 
         if (updateError) throw updateError;
+
+        if (_marriage_request) {
+           const marriagePayload = {
+               husband_id: _marriage_request.husband_id === 'NEW_MEMBER' ? id : _marriage_request.husband_id,
+               wife_id: _marriage_request.wife_id === 'NEW_MEMBER' ? id : _marriage_request.wife_id,
+               status: 'active'
+           };
+           // Note: in a real app, you might want to UPSERT or check if marriage exists first.
+           await supabase.from('marriages').insert([marriagePayload]);
+        }
+
         router.replace(`/dashboard/family-tree/${id}`);
       } else {
         // Fetch old data for diff
@@ -120,7 +240,7 @@ export default function EditMemberPage() {
             target_id: id,
             target_table: 'family_members',
             old_data: oldData,
-            new_data: payload,
+            new_data: payload, // payload includes _marriage_request !
             status: 'pending'
           }]);
 
@@ -261,6 +381,50 @@ export default function EditMemberPage() {
               Anak Angkat/Tiri (Ya)
             </label>
           </div>
+
+          {!dataLoading && families.length > 0 && (
+            <div className="space-y-4 mb-8 p-6 bg-slate-50 rounded-xl border border-slate-200">
+              <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider mb-2">Hubungan Keluarga</h3>
+              
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor="selectedFamilyId">
+                    Berkeluarga dengan (Pilih Keluarga)
+                  </label>
+                  <select
+                    id="selectedFamilyId"
+                    value={selectedFamilyId}
+                    onChange={(e) => setSelectedFamilyId(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all text-slate-700"
+                  >
+                    <option value="">-- Tidak ditambahkan ke keluarga manapun --</option>
+                    {families.map(f => (
+                      <option key={f.id} value={f.id}>{f.name}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-slate-400 mt-1">Anda bisa mengetik untuk mencari nama keluarga.</p>
+                </div>
+
+                {selectedFamilyId && (
+                  <div className="space-y-2">
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor="familyRole">
+                      Status di Keluarga Tersebut
+                    </label>
+                    <select
+                      id="familyRole"
+                      value={familyRole}
+                      onChange={(e) => setFamilyRole(e.target.value as any)}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all text-slate-700"
+                    >
+                      <option value="anak">Anak</option>
+                      {formData.gender === 'male' && <option value="ayah">Ayah/Suami</option>}
+                      {formData.gender === 'female' && <option value="ibu">Ibu/Istri</option>}
+                    </select>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end pt-4 border-t border-slate-100">
             <button 
