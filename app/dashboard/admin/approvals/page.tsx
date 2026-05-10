@@ -12,23 +12,6 @@ export default function AdminApprovalsPage() {
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  async function fetchRequests() {
-    if (requests.length === 0) setLoading(true);
-    const supabase = getSupabase();
-    // fetch pending requests and their requesters
-    const { data } = await supabase
-      .from('change_requests')
-      .select(`
-        *,
-        users ( email )
-      `)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
-    
-    setRequests(data || []);
-    setLoading(false);
-  }
-
   useEffect(() => {
     if (profileLoading) return;
 
@@ -37,10 +20,37 @@ export default function AdminApprovalsPage() {
       return;
     }
 
-    if (profile && profile.role === 'admin') {
-      fetchRequests();
+    let isMounted = true;
+    async function loadRequests() {
+      const supabase = getSupabase();
+      // fetch pending requests and their requesters
+      const { data } = await supabase
+        .from('change_requests')
+        .select(`
+          *,
+          users ( email )
+        `)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+      
+      if (isMounted) {
+        setRequests(data || []);
+        setLoading(false);
+      }
     }
-  }, [profile, profileLoading, router]);
+
+    // Call after any synchronous rendering to avoid set-state-in-effect issues if any
+    setTimeout(() => {
+      if (isMounted && profile && profile.role === 'admin') {
+        if (requests.length === 0) setLoading(true);
+        loadRequests();
+      }
+    }, 0);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [profile, profileLoading, router]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAction = async (id: string, action: 'approved' | 'rejected', targetTable: string, newData: any, oldData: any, targetId: string) => {
     const supabase = getSupabase();
@@ -48,12 +58,25 @@ export default function AdminApprovalsPage() {
     try {
       // If approved, we need to apply the changes to the target table
       if (action === 'approved') {
+        const { _marriage_request, ...realData } = newData;
+        let newTargetId = targetId;
+
         if (targetId && targetId !== '00000000-0000-0000-0000-000000000000') {
            // It's an update
-           await supabase.from(targetTable).update(newData).eq('id', targetId);
+           await supabase.from(targetTable).update(realData).eq('id', targetId);
         } else {
            // It's an insert
-           await supabase.from(targetTable).insert([newData]);
+           const { data } = await supabase.from(targetTable).insert([realData]).select().single();
+           if (data) newTargetId = data.id;
+        }
+
+        if (_marriage_request && newTargetId) {
+            const marriagePayload = {
+               husband_id: _marriage_request.husband_id === 'NEW_MEMBER' ? newTargetId : _marriage_request.husband_id,
+               wife_id: _marriage_request.wife_id === 'NEW_MEMBER' ? newTargetId : _marriage_request.wife_id,
+               status: 'active'
+            };
+            await supabase.from('marriages').insert([marriagePayload]);
         }
       }
 
