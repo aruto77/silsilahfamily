@@ -67,9 +67,13 @@ export default function MemberProfilePage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-1">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 flex flex-col items-center text-center">
-            <div className={`w-32 h-32 rounded-full flex items-center justify-center mb-6 shadow-iner ${member.gender === 'male' ? 'bg-indigo-100 text-indigo-600' : 'bg-rose-100 text-rose-600'}`}>
-              <UserIcon className="w-16 h-16 opacity-50" />
-            </div>
+            {member.photo_url ? (
+               <img src={member.photo_url} alt={member.full_name} className="w-32 h-32 rounded-full object-cover mb-6 border border-slate-200 shadow-sm" />
+            ) : (
+              <div className={`w-32 h-32 rounded-full flex items-center justify-center mb-6 shadow-sm ${member.gender === 'male' ? 'bg-indigo-100 text-indigo-600' : 'bg-rose-100 text-rose-600'}`}>
+                <UserIcon className="w-16 h-16 opacity-50" />
+              </div>
+            )}
             <h1 className="text-2xl font-bold text-slate-800 leading-tight">
               {member.full_name}
             </h1>
@@ -116,12 +120,6 @@ export default function MemberProfilePage() {
                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Status Anak</p>
                  <p className="font-medium text-slate-700">
                     {member.is_adopted ? 'Diadopsi' : 'Anak Kandung'}
-                 </p>
-               </div>
-               <div className="sm:col-span-2">
-                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Biografi</p>
-                 <p className="text-sm text-slate-600 whitespace-pre-wrap mt-1">
-                    {member.bio || <span className="italic text-slate-400">Belum ada biografi yang ditulis.</span>}
                  </p>
                </div>
              </div>
