@@ -21,7 +21,7 @@ export default function EditMemberPage() {
     gender: 'male',
     birth_date: '',
     death_date: '',
-    bio: '',
+    photo_url: '',
     is_adopted: false
   });
 
@@ -40,7 +40,7 @@ export default function EditMemberPage() {
           gender: data.gender || 'male',
           birth_date: data.birth_date ? new Date(data.birth_date).toISOString().split('T')[0] : '',
           death_date: data.death_date ? new Date(data.death_date).toISOString().split('T')[0] : '',
-          bio: data.bio || '',
+          photo_url: data.photo_url || '',
           is_adopted: data.is_adopted || false
         });
       }
@@ -49,6 +49,33 @@ export default function EditMemberPage() {
     
     if (id) fetchMember();
   }, [id]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Ukuran file maksimal 2 MB');
+      e.target.value = '';
+      return;
+    }
+
+    if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
+      setError('Format file harus JPG, JPEG, atau PNG');
+      e.target.value = '';
+      return;
+    }
+
+    setError(null);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormData(prev => ({
+        ...prev,
+        photo_url: reader.result as string
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -173,7 +200,6 @@ export default function EditMemberPage() {
               >
                 <option value="male">Laki-laki</option>
                 <option value="female">Perempuan</option>
-                <option value="other">Lainnya</option>
               </select>
             </div>
             <div className="space-y-2">
@@ -205,18 +231,21 @@ export default function EditMemberPage() {
           </div>
 
           <div className="space-y-2 mb-6">
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor="bio">
-              Biografi Singkat
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor="photo">
+              Foto (JPG/JPEG/PNG, Maks. 2MB)
             </label>
-            <textarea 
-              id="bio" 
-              name="bio" 
-              rows={4}
-              value={formData.bio}
-              onChange={handleChange}
-              placeholder="Tambahkan informasi tambahan..."
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none transition-all placeholder:text-slate-400 resize-y" 
+            <input 
+              type="file" 
+              id="photo" 
+              accept=".jpg,.jpeg,.png"
+              onChange={handleFileChange}
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none transition-all text-slate-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer" 
             />
+            {formData.photo_url && (
+              <div className="mt-2">
+                <img src={formData.photo_url} alt="Preview" className="w-24 h-24 object-cover rounded-lg border border-slate-200" />
+              </div>
+            )}
           </div>
 
           <div className="flex items-center space-x-3 mb-8 p-4 bg-slate-50 rounded-xl border border-slate-100">
@@ -229,7 +258,7 @@ export default function EditMemberPage() {
               className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer"
             />
             <label htmlFor="is_adopted" className="text-sm font-medium text-slate-700 cursor-pointer">
-              Anggota keluarga angkat/adopsi
+              Anak Angkat/Tiri (Ya)
             </label>
           </div>
 
