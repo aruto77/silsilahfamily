@@ -37,6 +37,11 @@ export default function NewMemberPage() {
   const [relationType, setRelationType] = useState<'anak_dari' | 'orang_tua_dari' | 'pasangan_dari'>('anak_dari');
   const [dataLoading, setDataLoading] = useState(true);
 
+  const [childCountStr, setChildCountStr] = useState("1");
+  const [customChildCount, setCustomChildCount] = useState<number>(0);
+  const childCount = childCountStr === 'custom' ? customChildCount : (parseInt(childCountStr) || 1);
+  const [additionalChildren, setAdditionalChildren] = useState<any[]>([]);
+
   React.useEffect(() => {
     async function fetchData() {
       const supabase = getSupabase();
@@ -48,6 +53,67 @@ export default function NewMemberPage() {
     }
     fetchData();
   }, []);
+
+  React.useEffect(() => {
+    if (relationType !== 'anak_dari') return;
+    const extraCount = Math.max(0, childCount - 1);
+    // eslint-disable-next-line
+    setAdditionalChildren(prev => {
+       if (prev.length === extraCount) return prev;
+       if (prev.length < extraCount) {
+          const toAdd = extraCount - prev.length;
+          return [...prev, ...Array.from({ length: toAdd }).map(() => ({
+              full_name: '',
+              gender: 'male',
+              birth_date: '',
+              death_date: '',
+              photo_url: '',
+              is_adopted: false
+          }))];
+       }
+       return prev.slice(0, extraCount);
+    });
+  }, [childCount, relationType]);
+
+  const handleAdditionalChildChange = (index: number, e: React.ChangeEvent<any>) => {
+    const { name, value, type } = e.target;
+    setAdditionalChildren(prev => {
+       const newArr = [...prev];
+       newArr[index] = {
+         ...newArr[index],
+         [name]: type === 'checkbox' ? e.target.checked : value
+       };
+       return newArr;
+    });
+  };
+
+  const handleAdditionalFileChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Ukuran file maksimal 2 MB');
+      e.target.value = '';
+      return;
+    }
+
+    if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
+      setError('Format file harus JPG, JPEG, atau PNG');
+      e.target.value = '';
+      return;
+    }
+
+    setError(null);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+       setAdditionalChildren(prev => {
+          const newArr = [...prev];
+          newArr[index] = { ...newArr[index], photo_url: reader.result as string };
+          return newArr;
+       });
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -123,12 +189,20 @@ export default function NewMemberPage() {
         };
       }
 
+      let relatedParentUpdate: any = {};
+
       if (relatedMemberId && relationType) {
         const related = members.find(m => m.id === relatedMemberId);
         if (related) {
           if (relationType === 'anak_dari') {
-            if (related.gender === 'male') payload.father_id = related.id;
-            if (related.gender === 'female') payload.mother_id = related.id;
+            if (related.gender === 'male') {
+               payload.father_id = related.id;
+               relatedParentUpdate.father_id = related.id;
+            }
+            if (related.gender === 'female') {
+               payload.mother_id = related.id;
+               relatedParentUpdate.mother_id = related.id;
+            }
             
             // If they are a child of 'related' and they chose to also add a spouse, the spouse doesn't get related.id as parent.
           } else if (relationType === 'orang_tua_dari') {
@@ -151,6 +225,15 @@ export default function NewMemberPage() {
           }
         }
       }
+
+      const extraPayloads = relationType === 'anak_dari' && childCount > 1 
+         ? additionalChildren.map(child => ({
+             ...child,
+             birth_date: child.birth_date || null,
+             death_date: child.death_date || null,
+             ...relatedParentUpdate
+           }))
+         : [];
 
       const { _marriage_request, _update_child_request, _new_spouse_request, ...realData } = payload;
 
@@ -189,18 +272,34 @@ export default function NewMemberPage() {
            await supabase.from('family_members').update(childUpdatePayload).eq('id', _update_child_request.child_id);
         }
 
+        if (extraPayloads.length > 0) {
+           const { error: extraErr } = await supabase.from('family_members').insert(extraPayloads);
+           if (extraErr) console.error("Error inserting extra children", extraErr);
+        }
+
         router.push(`/dashboard/family-tree/${data.id}`);
       } else {
         // Members must create a change request
-        const { error: requestError } = await supabase
-          .from('change_requests')
-          .insert([{
+        const requestsToInsert = [
+          {
             requester_id: profile?.id,
             target_id: '00000000-0000-0000-0000-000000000000', // Dummy UUID for new records
             target_table: 'family_members',
             new_data: payload, // note: payload includes _marriage_request, handled in approval!
             status: 'pending'
-          }]);
+          },
+          ...extraPayloads.map(ex => ({
+            requester_id: profile?.id,
+            target_id: '00000000-0000-0000-0000-000000000000',
+            target_table: 'family_members',
+            new_data: ex,
+            status: 'pending'
+          }))
+        ];
+
+        const { error: requestError } = await supabase
+          .from('change_requests')
+          .insert(requestsToInsert);
 
         if (requestError) throw requestError;
         router.push('/dashboard/my-requests');
@@ -238,7 +337,90 @@ export default function NewMemberPage() {
             </div>
           )}
 
-          <div className="mb-6">
+          {!dataLoading && members.length > 0 && (
+            <div className="space-y-4 mb-8 p-6 bg-slate-50 rounded-xl border border-slate-200">
+              <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider mb-2">Relasi Keluarga (Opsional)</h3>
+              
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor="relatedMemberId">
+                    Pilih Anggota Keluarga Spesifik
+                  </label>
+                  <select
+                    id="relatedMemberId"
+                    value={relatedMemberId}
+                    onChange={(e) => setRelatedMemberId(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all text-slate-700"
+                  >
+                    <option value="">-- Tidak dikaitkan dengan siapa-siapa --</option>
+                    {members.map(m => (
+                      <option key={m.id} value={m.id}>{m.full_name} ({m.gender === 'male' ? 'L' : 'P'})</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-slate-400 mt-1">Anda bisa mengetik untuk mencari nama anggota keluarga.</p>
+                </div>
+
+                {relatedMemberId && (
+                  <div className="space-y-2">
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor="relationType">
+                      Status Anggota Baru Ini Sebagai:
+                    </label>
+                    <select
+                      id="relationType"
+                      value={relationType}
+                      onChange={(e) => {
+                        setRelationType(e.target.value as any);
+                        setChildCountStr("1");
+                        setCustomChildCount(0);
+                      }}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all text-slate-700"
+                    >
+                      <option value="anak_dari">Anaknya</option>
+                      <option value="orang_tua_dari">Ayah/Ibunya</option>
+                      <option value="pasangan_dari">Suami/Istrinya</option>
+                    </select>
+                  </div>
+                )}
+                
+                {relatedMemberId && relationType === 'anak_dari' && (
+                  <div className="space-y-2 mt-4 pt-4 border-t border-slate-200">
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor="childCount">
+                      Jumlah Anak yang Ditambahkan
+                    </label>
+                    <select
+                      id="childCount"
+                      value={childCountStr}
+                      onChange={(e) => setChildCountStr(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all text-slate-700"
+                    >
+                      <option value="1">1 Anak</option>
+                      <option value="2">2 Anak</option>
+                      <option value="3">3 Anak</option>
+                      <option value="4">4 Anak</option>
+                      <option value="5">5 Anak</option>
+                      <option value="custom">Isi jumlah anak...</option>
+                    </select>
+                    {childCountStr === 'custom' && (
+                       <input 
+                         type="number"
+                         min="6"
+                         placeholder="Masukkan jumlah anak"
+                         value={customChildCount || ''}
+                         onChange={(e) => setCustomChildCount(parseInt(e.target.value) || 0)}
+                         className="w-full px-4 py-2.5 mt-3 bg-white border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all text-slate-700"
+                       />
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="mb-8">
+            <h3 className="font-bold text-slate-800 text-lg mb-4">
+              {childCount > 1 ? 'Data Anak Ke-1' : 'Data Pribadi'}
+            </h3>
+            <div className="mb-6">
             <div className="space-y-2">
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor="full_name">
                 Nama Lengkap <span className="text-rose-500">*</span>
@@ -331,6 +513,7 @@ export default function NewMemberPage() {
               Anak Angkat/Tiri (Ya)
             </label>
           </div>
+          </div>
 
           <div className="mb-8">
             <div className="flex items-center space-x-3 p-4 bg-slate-50 rounded-xl border border-slate-100 mb-4">
@@ -414,49 +597,84 @@ export default function NewMemberPage() {
             )}
           </div>
 
-          {!dataLoading && members.length > 0 && (
-            <div className="space-y-4 mb-8 p-6 bg-slate-50 rounded-xl border border-slate-200">
-              <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider mb-2">Relasi Keluarga (Opsional)</h3>
-              
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor="relatedMemberId">
-                    Pilih Anggota Keluarga Spesifik
-                  </label>
-                  <select
-                    id="relatedMemberId"
-                    value={relatedMemberId}
-                    onChange={(e) => setRelatedMemberId(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all text-slate-700"
-                  >
-                    <option value="">-- Tidak dikaitkan dengan siapa-siapa --</option>
-                    {members.map(m => (
-                      <option key={m.id} value={m.id}>{m.full_name} ({m.gender === 'male' ? 'L' : 'P'})</option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-slate-400 mt-1">Anda bisa mengetik untuk mencari nama anggota keluarga.</p>
+          {additionalChildren.map((child, index) => (
+             <div key={index} className="mb-8 pt-8 border-t border-slate-200">
+                <h3 className="font-bold text-slate-800 text-lg mb-4">Data Anak Ke-{index + 2}</h3>
+                
+                <div className="mb-6">
+                  <div className="space-y-2">
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor={`child_name_${index}`}>
+                      Nama Lengkap <span className="text-rose-500">*</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      id={`child_name_${index}`}
+                      name="full_name"
+                      required
+                      value={child.full_name}
+                      onChange={(e) => handleAdditionalChildChange(index, e)}
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
+                    />
+                  </div>
                 </div>
 
-                {relatedMemberId && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                   <div className="space-y-2">
-                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor="relationType">
-                      Status Anggota Baru Ini Sebagai:
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor={`child_gender_${index}`}>
+                      Jenis Kelamin <span className="text-rose-500">*</span>
                     </label>
                     <select
-                      id="relationType"
-                      value={relationType}
-                      onChange={(e) => setRelationType(e.target.value as any)}
-                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all text-slate-700"
+                      id={`child_gender_${index}`}
+                      name="gender"
+                      required
+                      value={child.gender}
+                      onChange={(e) => handleAdditionalChildChange(index, e)}
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
                     >
-                      <option value="anak_dari">Anaknya</option>
-                      <option value="orang_tua_dari">Ayah/Ibunya</option>
-                      <option value="pasangan_dari">Suami/Istrinya</option>
+                      <option value="male">Laki-laki</option>
+                      <option value="female">Perempuan</option>
                     </select>
                   </div>
-                )}
-              </div>
-            </div>
-          )}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor={`child_birth_${index}`}>
+                      Tanggal Lahir
+                    </label>
+                    <input 
+                      type="date" 
+                      id={`child_birth_${index}`} 
+                      name="birth_date" 
+                      value={child.birth_date} 
+                      onChange={(e) => handleAdditionalChildChange(index, e)} 
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all" 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor={`child_death_${index}`}>
+                      Tanggal Wafat
+                    </label>
+                    <input 
+                      type="date" 
+                      id={`child_death_${index}`} 
+                      name="death_date" 
+                      value={child.death_date} 
+                      onChange={(e) => handleAdditionalChildChange(index, e)} 
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all" 
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2 mb-6">
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider" htmlFor={`child_photo_${index}`}>Foto</label>
+                  <input type="file" id={`child_photo_${index}`} accept=".jpg,.jpeg,.png" onChange={(e) => handleAdditionalFileChange(index, e)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer" />
+                  {child.photo_url && <img src={child.photo_url} alt="Preview" className="w-24 h-24 object-cover mt-2 rounded-lg border border-slate-200" />}
+                </div>
+
+                <div className="flex items-center space-x-3 mb-8 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                  <input type="checkbox" id={`child_adopted_${index}`} name="is_adopted" checked={child.is_adopted} onChange={(e) => handleAdditionalChildChange(index, e)} className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer" />
+                  <label htmlFor={`child_adopted_${index}`} className="text-sm font-medium text-slate-700 cursor-pointer">Anak Angkat/Tiri (Ya)</label>
+                </div>
+             </div>
+          ))}
 
           <div className="flex justify-end pt-4 border-t border-slate-100 items-center space-x-4">
             <Link 
