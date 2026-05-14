@@ -11,6 +11,7 @@ interface Member {
   mother_id: string | null;
   gender: string;
   birth_date: string | null;
+  death_date: string | null;
   photo_url: string | null;
 }
 
@@ -42,13 +43,18 @@ export default function BalkanFamilyTree({ members, marriages, onNodeClick }: Ba
         if (marriage.wife_id === m.id && members.some(x => x.id === marriage.husband_id)) pids.push(marriage.husband_id);
       });
 
+      let displayName = m.full_name;
+      if (m.death_date) {
+        displayName = m.gender === 'female' ? `Almh. ${displayName}` : `Alm. ${displayName}`;
+      }
+
       return {
         id: m.id,
         pids: pids.length > 0 ? pids : undefined,
         // Only include fid/mid if the parent is ALSO in the current members array!
         mid: m.mother_id && members.some(x => x.id === m.mother_id) ? m.mother_id : undefined,
         fid: m.father_id && members.some(x => x.id === m.father_id) ? m.father_id : undefined,
-        name: m.full_name,
+        name: displayName,
         gender: m.gender,
         birthDate: m.birth_date ? new Date(m.birth_date).getFullYear().toString() : '',
         img: m.photo_url || ''
