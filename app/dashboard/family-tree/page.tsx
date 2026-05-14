@@ -100,6 +100,15 @@ export default function FamilyTreePage() {
     return fams;
   }, [members, marriages]);
 
+// Add formatName locally 
+  const formatName = (m: any) => {
+    if (!m) return '';
+    if (m.death_date) {
+      return m.gender === 'female' ? `Almh. ${m.full_name}` : `Alm. ${m.full_name}`;
+    }
+    return m.full_name;
+  };
+
   return (
     <>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -222,7 +231,7 @@ export default function FamilyTreePage() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
             <div className="p-6 pb-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
                <div>
-                  <h3 className="font-bold text-slate-800 text-lg">{activeMember.full_name}</h3>
+                  <h3 className="font-bold text-slate-800 text-lg">{formatName(activeMember)}</h3>
                   <p className="text-xs text-slate-500">
                     {activeMember.birth_date ? new Date(activeMember.birth_date).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric'}) : 'Tanggal lahir belum dicatat'}
                   </p>
@@ -235,7 +244,7 @@ export default function FamilyTreePage() {
                   href={`/dashboard/family-tree/${activeMember.id}`}
                   className="w-full inline-flex items-center justify-center px-4 py-2.5 bg-indigo-50 text-indigo-700 font-medium rounded-xl hover:bg-indigo-100 transition-colors"
                 >
-                  Lihat Detail Penuh
+                  Lihat Detail
               </Link>
               
               <div className="h-px bg-slate-100 my-4" />
@@ -287,6 +296,22 @@ export default function FamilyTreePage() {
                   }
                   return null;
                 })()}
+              </div>
+
+              <div className="pt-4 mt-4 border-t border-slate-100">
+                <button
+                  onClick={async () => {
+                    if (confirm('Apakah anda yakin ingin menghapus data anggota keluarga ini?')) {
+                      const supabase = getSupabase();
+                      await supabase.from('family_members').delete().eq('id', activeMember.id);
+                      setMembers(prev => prev.filter(m => m.id !== activeMember.id));
+                      setCustomModalMemberId(null);
+                    }
+                  }}
+                  className="w-full text-left px-4 py-2.5 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl text-sm font-medium hover:bg-rose-100 transition-colors flex items-center justify-center"
+                >
+                  Hapus Data Anggota
+                </button>
               </div>
             </div>
           </div>
