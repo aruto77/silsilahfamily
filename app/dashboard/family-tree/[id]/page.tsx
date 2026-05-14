@@ -13,11 +13,21 @@ export default function MemberProfilePage() {
   const router = useRouter();
   const { profile } = useUser();
   const [member, setMember] = useState<any>(null);
+  const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchMember() {
       const supabase = getSupabase();
+      
+      const { data: allMembers, error: allMembersError } = await supabase
+        .from('family_members')
+        .select('*');
+        
+      if (!allMembersError && allMembers) {
+        setMembers(allMembers);
+      }
+
       const { data, error } = await supabase
         .from('family_members')
         .select('*')
@@ -34,6 +44,59 @@ export default function MemberProfilePage() {
     
     if (id) fetchMember();
   }, [id]);
+
+  const handleMarkAsDeceased = async () => {
+    if (confirm('Ubah status hidup menjadi meninggal dunia? (Tanggal wafat akan diisi dengan hari ini. Anda bisa mengubahnya nanti melalui form Edit.)')) {
+        const supabase = getSupabase();
+        const today = new Date().toISOString().split('T')[0];
+        
+        if (profile?.role === 'admin') {
+            await supabase.from('family_members').update({ death_date: today }).eq('id', id);
+            setMember({ ...member, death_date: today });
+        } else {
+            const { error: requestError } = await supabase
+              .from('change_requests')
+              .insert([{
+                requester_id: profile?.id,
+                target_id: id,
+                target_table: 'family_members',
+                old_data: member,
+                new_data: { ...member, death_date: today },
+                status: 'pending'
+              }]);
+            if (!requestError) {
+              alert('Usulan perubahan telah dikirim ke admin.');
+            }
+        }
+    }
+  };
+
+  const formatName = (m: any) => {
+    if (!m) return '';
+    if (m.death_date) {
+      return m.gender === 'female' ? `Almh. ${m.full_name}` : `Alm. ${m.full_name}`;
+    }
+    return m.full_name;
+  };
+
+  const renderParentExplanation = () => {
+    if (!member.father_id && !member.mother_id) {
+       return "Belum/Tidak Diketahui";
+    }
+    
+    const father = members.find(m => m.id === member.father_id);
+    const mother = members.find(m => m.id === member.mother_id);
+    const statusText = member.is_adopted ? 'anak angkat/tiri' : 'anak kandung';
+    
+    if (father && mother) {
+       return `sebagai ${statusText} dari pasangan ${formatName(father)} dan ${formatName(mother)}`;
+    } else if (father) {
+       return `sebagai ${statusText} dari ${formatName(father)}`;
+    } else if (mother) {
+       return `sebagai ${statusText} dari ${formatName(mother)}`;
+    }
+    return "Belum/Tidak Diketahui";
+  };
 
   if (loading) {
     return (
@@ -75,7 +138,7 @@ export default function MemberProfilePage() {
               </div>
             )}
             <h1 className="text-2xl font-bold text-slate-800 leading-tight">
-              {member.full_name}
+              {formatName(member)}
             </h1>
             <p className="text-sm text-slate-500 mt-2 font-medium">
               {member.birth_date ? new Date(member.birth_date).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric'}) : 'Tanggal lahir belum dicatat'}
@@ -106,9 +169,19 @@ export default function MemberProfilePage() {
              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                <div>
                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Status Kehidupan</p>
-                 <p className="font-medium text-slate-700">
-                    {member.death_date ? <span className="text-rose-600 font-semibold">Almarhum/ah</span> : <span className="text-emerald-600 font-semibold">Hidup</span>}
-                 </p>
+                 <div className="font-medium text-slate-700">
+                    {member.death_date ? <span className="text-rose-600 font-semibold">Almarhum/ah</span> : (
+                      <span className="flex items-center gap-2">
+                        <span className="text-emerald-600 font-semibold">Hidup</span>
+                        <button 
+                          onClick={handleMarkAsDeceased}
+                          className="text-xs px-2.5 py-1 bg-slate-100 text-slate-600 rounded-md hover:bg-slate-200 transition-colors font-semibold"
+                        >
+                          Ubah
+                        </button>
+                      </span>
+                    )}
+                 </div>
                </div>
                <div>
                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Jenis Kelamin</p>
@@ -118,9 +191,12 @@ export default function MemberProfilePage() {
                </div>
                <div>
                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Status Anak</p>
-                 <p className="font-medium text-slate-700">
+                 <div className="font-medium text-slate-700">
                     {member.is_adopted ? 'Diadopsi' : 'Anak Kandung'}
-                 </p>
+                    <div className="text-xs text-slate-500 font-normal mt-0.5">
+                       {renderParentExplanation()}
+                    </div>
+                 </div>
                </div>
              </div>
           </div>
