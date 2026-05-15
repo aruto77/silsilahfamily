@@ -12,7 +12,21 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isPortraitMobile, setIsPortraitMobile] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsPortraitMobile(window.innerWidth < 768 && window.innerHeight > window.innerWidth);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    return () => {
+       window.removeEventListener('resize', handleResize);
+       window.removeEventListener('orientationchange', handleResize);
+    };
+  }, []);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -39,7 +53,7 @@ export default function Login() {
              refresh_token: event.data.session.refresh_token,
            });
         }
-        router.push('/dashboard');
+        window.location.href = '/dashboard';
       }
     };
     window.addEventListener('message', handleMessage);
@@ -113,7 +127,19 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 antialiased text-on-surface bg-[url('https://lh3.googleusercontent.com/aida-public/AB6AXuAncgm94O1p2xoPcICXe__cT3zbu2YqcaYRfVqipzAutALp2_QK9DrqKSh9TE2wr-Ya2H6qlMFR_Z9QM_0K2B2mroxOYzthxWfyw9AID7RJe1SA60e6FjvClIsHDEEWrBmQ2ubuJRss8RwOhqp-shGF-Xd9or9aW-ndtIYmHvfVXbF75-iZHKIyX6zPpPLZczpW-8GR3QTXAcvSEQXCMxhc6qOXpnsIkuELNu6AeOWulznqFUUWHjMSe2Tn6ked9bfnXecU0zP0mP0')] bg-cover bg-center bg-no-repeat bg-fixed">
+    <>
+      {isPortraitMobile && (
+        <div className="fixed inset-0 z-[9999] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-6 text-center">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl border border-slate-200">
+            <span className="material-symbols-outlined text-indigo-600 text-5xl mb-4 animate-bounce">screen_rotation</span>
+            <h2 className="text-xl font-bold text-slate-800 mb-2">Putar Perangkat Anda</h2>
+            <p className="text-slate-600 text-sm">
+              Untuk pengalaman terbaik dalam melihat silsilah keluarga, mohon putar smartphone Anda ke mode lanskap (horizontal).
+            </p>
+          </div>
+        </div>
+      )}
+      <div className="min-h-screen flex items-center justify-center p-4 antialiased text-on-surface bg-[url('https://lh3.googleusercontent.com/aida-public/AB6AXuAncgm94O1p2xoPcICXe__cT3zbu2YqcaYRfVqipzAutALp2_QK9DrqKSh9TE2wr-Ya2H6qlMFR_Z9QM_0K2B2mroxOYzthxWfyw9AID7RJe1SA60e6FjvClIsHDEEWrBmQ2ubuJRss8RwOhqp-shGF-Xd9or9aW-ndtIYmHvfVXbF75-iZHKIyX6zPpPLZczpW-8GR3QTXAcvSEQXCMxhc6qOXpnsIkuELNu6AeOWulznqFUUWHjMSe2Tn6ked9bfnXecU0zP0mP0')] bg-cover bg-center bg-no-repeat bg-fixed">
       <main className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="font-h1 text-h1 text-primary tracking-tight">Kinship</h1>
@@ -222,5 +248,6 @@ export default function Login() {
         </div>
       </main>
     </div>
+    </>
   );
 }
