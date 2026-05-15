@@ -137,6 +137,14 @@ export default function EditMemberPage() {
            await supabase.from('marriages').insert([marriagePayload]);
         }
 
+        // --- AUDIT LOG ---
+        await supabase.from('audit_logs').insert([{
+           admin_id: profile?.id,
+           target_id: id,
+           action_type: 'UBAH_ANGGOTA',
+           details: { info: `Mengubah data anggota: ${realData.full_name}` }
+        }]);
+
         router.replace(`/dashboard/family-tree/${id}`);
       } else {
         // Fetch old data for diff
