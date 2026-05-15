@@ -109,35 +109,62 @@ export default function FamilyTreePage() {
     return m.full_name;
   };
 
+  const treeComponentRef = React.useRef<any>(null);
+
   return (
     <>
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <div className="md:hidden mb-4 p-4 bg-indigo-50 text-indigo-800 rounded-xl border border-indigo-100 flex items-center">
+        <span className="material-symbols-outlined mr-3 text-indigo-600">screen_rotation</span>
+        <p className="text-sm font-medium">Putar layar smartphone Anda ke mode lanskap untuk tampilan silsilah yang lebih optimal.</p>
+      </div>
+
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Pohon Silsilah Keluarga</h1>
           <p className="text-slate-500 mt-1">
             {viewMode === 'full' ? 'Visualisasi pohon keluarga secara menyeluruh.' : 'Visualisasi silsilah berdasarkan keluarga inti.'}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {isAdmin && !selectedFamily && (
-            <div className="flex p-1 bg-slate-200 rounded-lg">
+            <div className="flex p-1 bg-slate-100 rounded-lg shrink-0">
               <button
                 onClick={() => setOverrideViewMode('grouped')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'grouped' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'grouped' ? 'bg-white shadow border border-slate-200 text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 Keluarga Inti
               </button>
               <button
                 onClick={() => setOverrideViewMode('full')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'full' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'full' ? 'bg-white shadow border border-slate-200 text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 Penuh
               </button>
             </div>
           )}
+          
+          <button 
+            onClick={() => {
+               if (treeComponentRef.current) {
+                  treeComponentRef.current.exportPdf();
+               } else {
+                  // Fallback
+                  const bftElement = document.querySelector('.bft-pdf');
+                  if (bftElement) {
+                    (bftElement as HTMLElement).click();
+                  } else {
+                     alert('Tampilan silsilah belum siap untuk dicetak.');
+                  }
+               }
+            }}
+            className="inline-flex items-center justify-center px-4 py-2.5 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors border border-slate-200 shrink-0"
+          >
+            Cetak / Simpan PDF
+          </button>
+
           <Link 
             href="/dashboard/family-tree/new"
-            className="inline-flex items-center justify-center px-4 py-2.5 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
+            className="inline-flex items-center justify-center px-4 py-2.5 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors shadow-sm shrink-0"
           >
             <Plus className="w-4 h-4 mr-2" />
             Tambah Anggota
@@ -215,6 +242,7 @@ export default function FamilyTreePage() {
             )}
             <div className="flex-1 relative">
               <BalkanFamilyTree 
+                ref={treeComponentRef}
                 members={selectedFamily ? [...selectedFamily.parents, ...selectedFamily.children] : members} 
                 marriages={selectedFamily ? (selectedFamily.marriage ? [selectedFamily.marriage] : []) : marriages} 
                 onNodeClick={(id) => {
@@ -304,6 +332,16 @@ export default function FamilyTreePage() {
                     if (confirm('Apakah anda yakin ingin menghapus data anggota keluarga ini?')) {
                       const supabase = getSupabase();
                       await supabase.from('family_members').delete().eq('id', activeMember.id);
+                      
+                      if (isAdmin) {
+                        await supabase.from('audit_logs').insert([{
+                           admin_id: profile?.id,
+                           target_id: activeMember.id,
+                           action_type: 'HAPUS_ANGGOTA',
+                           details: { info: `Menghapus data anggota: ${activeMember.full_name}` }
+                        }]);
+                      }
+
                       setMembers(prev => prev.filter(m => m.id !== activeMember.id));
                       setCustomModalMemberId(null);
                     }
