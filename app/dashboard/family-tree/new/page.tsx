@@ -277,6 +277,14 @@ export default function NewMemberPage() {
            if (extraErr) console.error("Error inserting extra children", extraErr);
         }
 
+        // --- AUDIT LOG ---
+        await supabase.from('audit_logs').insert([{
+           admin_id: profile?.id,
+           target_id: data.id,
+           action_type: 'TAMBAH_ANGGOTA',
+           details: { info: `Menambahkan anggota keluarga baru: ${data.full_name}`, relatedTo: relatedMemberId }
+        }]);
+
         router.push(`/dashboard/family-tree/${data.id}`);
       } else {
         // Members must create a change request
