@@ -30,6 +30,7 @@ export default function AuditLogsPage() {
             *,
             users ( email )
           `)
+          .not('action_type', 'in', '("TAMBAH_ANGGOTA","UBAH_ANGGOTA","HAPUS_ANGGOTA")')
           .order('created_at', { ascending: false })
           .limit(100);
         
