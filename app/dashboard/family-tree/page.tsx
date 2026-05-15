@@ -113,11 +113,6 @@ export default function FamilyTreePage() {
 
   return (
     <>
-      <div className="md:hidden mb-4 p-4 bg-indigo-50 text-indigo-800 rounded-xl border border-indigo-100 flex items-center">
-        <span className="material-symbols-outlined mr-3 text-indigo-600">screen_rotation</span>
-        <p className="text-sm font-medium">Putar layar smartphone Anda ke mode lanskap untuk tampilan silsilah yang lebih optimal.</p>
-      </div>
-
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Pohon Silsilah Keluarga</h1>
@@ -159,7 +154,7 @@ export default function FamilyTreePage() {
             }}
             className="inline-flex items-center justify-center px-4 py-2.5 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors border border-slate-200 shrink-0"
           >
-            Cetak / Simpan PDF
+            Simpan sebagai PDF
           </button>
 
           <Link 
