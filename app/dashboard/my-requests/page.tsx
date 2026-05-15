@@ -23,6 +23,7 @@ export default function GlobalHistoryPage() {
       const { data: logsData } = await supabase
         .from('audit_logs')
         .select(`*, users!audit_logs_admin_id_fkey(email)`)
+        .in('action_type', ['TAMBAH_ANGGOTA', 'UBAH_ANGGOTA', 'HAPUS_ANGGOTA'])
         .order('created_at', { ascending: false })
         .limit(50);
         
