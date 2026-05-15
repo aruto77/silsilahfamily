@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 // @ts-ignore
 import FamilyTree from '@balkangraph/familytree.js';
 
@@ -26,91 +26,121 @@ interface BalkanFamilyTreeProps {
   onNodeClick?: (id: string) => void;
 }
 
-export default function BalkanFamilyTree({ members, marriages, onNodeClick }: BalkanFamilyTreeProps) {
-  const treeRef = useRef<HTMLDivElement>(null);
-  const internalTreeRef = useRef<any>(null);
+export interface BalkanFamilyTreeRef {
+  exportPdf: () => void;
+}
 
-  useEffect(() => {
-    if (!treeRef.current) return;
+const BalkanFamilyTree = forwardRef<BalkanFamilyTreeRef, BalkanFamilyTreeProps>(
+  ({ members, marriages, onNodeClick }, ref) => {
+    const treeRef = useRef<HTMLDivElement>(null);
+    const internalTreeRef = useRef<any>(null);
 
-    // Build the nodes array according to Balkan FamilyTree JS expectations
-    const nodes = members.map(m => {
-      const pids: string[] = [];
-      // Find all marriages involving this member to get their partners
-      marriages.forEach(marriage => {
-        // Only add partner to pids if the partner is ALSO in the current members array!
-        if (marriage.husband_id === m.id && members.some(x => x.id === marriage.wife_id)) pids.push(marriage.wife_id);
-        if (marriage.wife_id === m.id && members.some(x => x.id === marriage.husband_id)) pids.push(marriage.husband_id);
+    useImperativeHandle(ref, () => ({
+      exportPdf: () => {
+        if (internalTreeRef.current) {
+          internalTreeRef.current.exportPDF({
+            format: 'A4',
+            orientation: 'landscape'
+          });
+        }
+      }
+    }));
+
+    useEffect(() => {
+      if (!treeRef.current) return;
+
+      const nodes = members.map(m => {
+        const pids: string[] = [];
+        marriages.forEach(marriage => {
+          if (marriage.husband_id === m.id && members.some(x => x.id === marriage.wife_id)) pids.push(marriage.wife_id);
+          if (marriage.wife_id === m.id && members.some(x => x.id === marriage.husband_id)) pids.push(marriage.husband_id);
+        });
+
+        let displayName = m.full_name;
+        if (m.death_date) {
+          displayName = m.gender === 'female' ? `Almh. ${displayName}` : `Alm. ${displayName}`;
+        }
+
+        return {
+          id: m.id,
+          pids: pids.length > 0 ? pids : undefined,
+          mid: m.mother_id && members.some(x => x.id === m.mother_id) ? m.mother_id : undefined,
+          fid: m.father_id && members.some(x => x.id === m.father_id) ? m.father_id : undefined,
+          name: displayName,
+          gender: m.gender,
+          birthDate: m.birth_date ? new Date(m.birth_date).getFullYear().toString() : '',
+          img: m.photo_url || '',
+          tags: [m.gender]
+        };
       });
 
-      let displayName = m.full_name;
-      if (m.death_date) {
-        displayName = m.gender === 'female' ? `Almh. ${displayName}` : `Alm. ${displayName}`;
-      }
-
-      return {
-        id: m.id,
-        pids: pids.length > 0 ? pids : undefined,
-        // Only include fid/mid if the parent is ALSO in the current members array!
-        mid: m.mother_id && members.some(x => x.id === m.mother_id) ? m.mother_id : undefined,
-        fid: m.father_id && members.some(x => x.id === m.father_id) ? m.father_id : undefined,
-        name: displayName,
-        gender: m.gender,
-        birthDate: m.birth_date ? new Date(m.birth_date).getFullYear().toString() : '',
-        img: m.photo_url || ''
-      };
-    });
-
-    if (internalTreeRef.current) {
-      try {
-        internalTreeRef.current.destroy();
-      } catch (e) {
-        console.error("Error destroying previous tree", e);
-      }
-      internalTreeRef.current = null;
-    }
-
-    try {
-      internalTreeRef.current = new FamilyTree(treeRef.current, {
-          nodeBinding: {
-              field_0: "name",
-              field_1: "birthDate",
-              img_0: "img"
-          },
-          scaleInitial: FamilyTree.match.boundary,
-          mouseScrool: FamilyTree.action.zoom,
-          toolbar: {
-              zoom: true,
-              fit: true
-          }
-      });
-
-      if (onNodeClick) {
-         internalTreeRef.current.on('click', function(sender: any, args: any) {
-             onNodeClick(args.node.id);
-             // Ensure we don't trigger default FamilyTree profile modal
-             return false;
-         });
-      }
-      
-      internalTreeRef.current.load(nodes);
-    } catch (e) {
-      console.error("FamilyTree initialization error", e);
-    }
-
-    return () => {
       if (internalTreeRef.current) {
         try {
           internalTreeRef.current.destroy();
-        } catch (e) {}
+        } catch (e) {
+          console.error("Error destroying previous tree", e);
+        }
         internalTreeRef.current = null;
       }
-    };
-  }, [members, marriages, onNodeClick]);
 
-  return (
-    <div className="w-full h-[600px] border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 relative">
-      <div id="tree" ref={treeRef} className="w-full h-full"></div>
-    </div>
-  );
-}
+      try {
+        internalTreeRef.current = new FamilyTree(treeRef.current, {
+            nodeBinding: {
+                field_0: "name",
+                field_1: "birthDate",
+                img_0: "img"
+            },
+            scaleInitial: FamilyTree.match.boundary,
+            mouseScrool: FamilyTree.action.zoom,
+            toolbar: {
+                zoom: true,
+                fit: true
+            }
+        });
+
+        if (onNodeClick) {
+           internalTreeRef.current.on('click', function(sender: any, args: any) {
+               onNodeClick(args.node.id);
+               return false;
+           });
+        }
+        
+        internalTreeRef.current.load(nodes);
+        
+        // Timeout to fit again to solve zooming issue where it only shows one family
+        setTimeout(() => {
+          if (internalTreeRef.current) {
+             internalTreeRef.current.fit();
+          }
+        }, 300);
+      } catch (e) {
+        console.error("FamilyTree initialization error", e);
+      }
+
+      return () => {
+        if (internalTreeRef.current) {
+          try {
+            internalTreeRef.current.destroy();
+          } catch (e) {}
+          internalTreeRef.current = null;
+        }
+      };
+    }, [members, marriages, onNodeClick]);
+
+    return (
+      <div className="w-full h-full border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 relative min-h-[600px]">
+        <style>{`
+          .female rect {
+            fill: #fbcfe8 !important;
+            stroke: #f472b6 !important;
+            stroke-width: 2px !important;
+          }
+        `}</style>
+        <div id="tree" ref={treeRef} className="w-full h-full"></div>
+      </div>
+    );
+  }
+);
+
+BalkanFamilyTree.displayName = 'BalkanFamilyTree';
+export default BalkanFamilyTree;
