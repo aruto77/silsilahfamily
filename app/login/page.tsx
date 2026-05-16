@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '../../lib/supabase';
-import { Mail, Lock, Eye, EyeOff, Clock } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Clock, Smartphone, RotateCw } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -131,7 +131,10 @@ export default function Login() {
       {isPortraitMobile && (
         <div className="fixed inset-0 z-[9999] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-6 text-center">
           <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl border border-slate-200">
-            <span className="material-symbols-outlined text-indigo-600 text-5xl mb-4 animate-bounce">screen_rotation</span>
+            <div className="relative inline-block text-indigo-600 mb-6 animate-bounce">
+              <Smartphone className="w-16 h-16 origin-center -rotate-90 transition-transform duration-1000" />
+              <RotateCw className="w-8 h-8 absolute -bottom-2 -right-2 bg-white rounded-full p-1" />
+            </div>
             <h2 className="text-xl font-bold text-slate-800 mb-2">Putar Perangkat Anda</h2>
             <p className="text-slate-600 text-sm">
               Untuk pengalaman terbaik dalam melihat silsilah keluarga, mohon putar smartphone Anda ke mode lanskap (horizontal).
