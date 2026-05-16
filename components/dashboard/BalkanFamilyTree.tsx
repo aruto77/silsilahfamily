@@ -40,7 +40,8 @@ const BalkanFamilyTree = forwardRef<BalkanFamilyTreeRef, BalkanFamilyTreeProps>(
         if (internalTreeRef.current) {
           internalTreeRef.current.exportPDF({
             format: 'A4',
-            orientation: 'landscape'
+            orientation: 'Landscape',
+            padding: 50
           });
         }
       }
