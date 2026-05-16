@@ -50,16 +50,7 @@ const BalkanFamilyTree = forwardRef<BalkanFamilyTreeRef, BalkanFamilyTreeProps>(
     useEffect(() => {
       if (!treeRef.current) return;
 
-      // Sort members so those without parents come first
-      const sortedMembers = [...members].sort((a, b) => {
-        const aHasParents = a.father_id || a.mother_id;
-        const bHasParents = b.father_id || b.mother_id;
-        if (!aHasParents && bHasParents) return -1;
-        if (aHasParents && !bHasParents) return 1;
-        return 0; // maintain relative order
-      });
-
-      const nodes = sortedMembers.map(m => {
+      const nodes = members.map(m => {
         const pids: string[] = [];
         marriages.forEach(marriage => {
           if (marriage.husband_id === m.id && members.some(x => x.id === marriage.wife_id)) pids.push(marriage.wife_id);
@@ -116,6 +107,13 @@ const BalkanFamilyTree = forwardRef<BalkanFamilyTreeRef, BalkanFamilyTreeProps>(
         }
         
         internalTreeRef.current.load(nodes);
+
+        // Timeout to fit again to solve zooming issue where it only shows one family
+        setTimeout(() => {
+          if (internalTreeRef.current) {
+             internalTreeRef.current.fit();
+          }
+        }, 300);
         
       } catch (e) {
         console.error("FamilyTree initialization error", e);
