@@ -50,7 +50,38 @@ const BalkanFamilyTree = forwardRef<BalkanFamilyTreeRef, BalkanFamilyTreeProps>(
     useEffect(() => {
       if (!treeRef.current) return;
 
-      const nodes = members.map(m => {
+      const getDescendantCount = (memberId: string): number => {
+         let count = 0;
+         const children = members.filter(m => m.father_id === memberId || m.mother_id === memberId);
+         count += children.length;
+         children.forEach(c => {
+             count += getDescendantCount(c.id);
+         });
+         return count;
+      };
+
+      // Sort members so those without parents come first
+      const sortedMembers = [...members].sort((a, b) => {
+        const aHasParents = a.father_id || a.mother_id;
+        const bHasParents = b.father_id || b.mother_id;
+        if (!aHasParents && bHasParents) return -1;
+        if (aHasParents && !bHasParents) return 1;
+        
+        // If both have no parents, sort by number of descendants (descending)
+        if (!aHasParents && !bHasParents) {
+            const countA = getDescendantCount(a.id);
+            const countB = getDescendantCount(b.id);
+            if (countA !== countB) {
+                return countB - countA;
+            }
+            // Fallback to name alphabetically
+            return a.full_name.localeCompare(b.full_name);
+        }
+        
+        return 0; // maintain relative order
+      });
+
+      const nodes = sortedMembers.map(m => {
         const pids: string[] = [];
         marriages.forEach(marriage => {
           if (marriage.husband_id === m.id && members.some(x => x.id === marriage.wife_id)) pids.push(marriage.wife_id);
@@ -107,13 +138,6 @@ const BalkanFamilyTree = forwardRef<BalkanFamilyTreeRef, BalkanFamilyTreeProps>(
         }
         
         internalTreeRef.current.load(nodes);
-
-        // Timeout to fit again to solve zooming issue where it only shows one family
-        setTimeout(() => {
-          if (internalTreeRef.current) {
-             internalTreeRef.current.fit();
-          }
-        }, 300);
         
       } catch (e) {
         console.error("FamilyTree initialization error", e);
