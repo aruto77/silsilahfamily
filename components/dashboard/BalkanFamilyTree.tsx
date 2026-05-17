@@ -24,6 +24,7 @@ interface BalkanFamilyTreeProps {
   members: Member[];
   marriages: Marriage[];
   onNodeClick?: (id: string) => void;
+  enableSearch?: boolean;
 }
 
 export interface BalkanFamilyTreeRef {
@@ -31,7 +32,7 @@ export interface BalkanFamilyTreeRef {
 }
 
 const BalkanFamilyTree = forwardRef<BalkanFamilyTreeRef, BalkanFamilyTreeProps>(
-  ({ members, marriages, onNodeClick }, ref) => {
+  ({ members, marriages, onNodeClick, enableSearch = true }, ref) => {
     const treeRef = useRef<HTMLDivElement>(null);
     const internalTreeRef = useRef<any>(null);
 
@@ -122,7 +123,7 @@ const BalkanFamilyTree = forwardRef<BalkanFamilyTreeRef, BalkanFamilyTreeProps>(
                 field_1: "birthDate",
                 img_0: "img"
             },
-            searchFields: ["name"],
+            ...(enableSearch ? { searchFields: ["name"] } : {}),
             scaleInitial: FamilyTree.match.boundary,
             mouseScrool: FamilyTree.action.zoom,
             toolbar: {
@@ -152,7 +153,7 @@ const BalkanFamilyTree = forwardRef<BalkanFamilyTreeRef, BalkanFamilyTreeProps>(
           internalTreeRef.current = null;
         }
       };
-    }, [members, marriages, onNodeClick]);
+    }, [members, marriages, onNodeClick, enableSearch]);
 
     return (
       <div className="w-full h-full border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 relative min-h-[600px]">
