@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, FileText, Grid, History, UsersRound, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Grid, History, UsersRound, Settings, ChevronLeft, ChevronRight, GitBranch } from 'lucide-react';
 import { UserProfile } from '../../hooks/use-user';
 
 interface SidebarProps {
@@ -17,6 +17,7 @@ export function Sidebar({ profile }: SidebarProps) {
   const userLinks = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Silsilah Keluarga', href: '/dashboard/family-tree', icon: UsersRound },
+    ...(profile?.role !== 'admin' ? [{ name: 'Pohon Silsilah', href: '/dashboard/pohon-silsilah', icon: GitBranch }] : []),
     { name: 'Riwayat Perubahan', href: '/dashboard/my-requests', icon: History },
   ];
 
