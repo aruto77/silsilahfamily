@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Search, Bell, LogOut } from 'lucide-react';
+import { Bell, LogOut } from 'lucide-react';
 import { UserProfile } from '../../hooks/use-user';
 import { getSupabase } from '../../lib/supabase';
 import { useRouter } from 'next/navigation';
@@ -40,16 +40,7 @@ export function Topbar({ profile }: TopbarProps) {
 
   return (
     <header className="h-20 bg-white border-b border-slate-200 px-8 flex items-center justify-between shrink-0">
-      <div className="relative w-96 hidden md:block">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-          <Search className="w-4 h-4" />
-        </span>
-        <input 
-          type="text" 
-          placeholder="Cari data silsilah..." 
-          className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-transparent rounded-lg text-sm focus:bg-white focus:border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all placeholder:text-slate-400 font-medium text-slate-700" 
-        />
-      </div>
+      <div></div> {/* Placeholder for search bar */}
       
       <div className="flex items-center space-x-4 ml-auto">
         <button className="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-slate-50 hover:text-slate-700 rounded-full transition-colors relative">
