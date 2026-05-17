@@ -122,6 +122,7 @@ const BalkanFamilyTree = forwardRef<BalkanFamilyTreeRef, BalkanFamilyTreeProps>(
                 field_1: "birthDate",
                 img_0: "img"
             },
+            searchFields: ["name"],
             scaleInitial: FamilyTree.match.boundary,
             mouseScrool: FamilyTree.action.zoom,
             toolbar: {
