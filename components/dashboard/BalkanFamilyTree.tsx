@@ -78,6 +78,15 @@ const BalkanFamilyTree = forwardRef<BalkanFamilyTreeRef, BalkanFamilyTreeProps>(
             // Fallback to name alphabetically
             return a.full_name.localeCompare(b.full_name);
         }
+
+        // If both have parents, sort by birth date (oldest first)
+        if (aHasParents && bHasParents) {
+          if (a.birth_date && b.birth_date) {
+            return new Date(a.birth_date).getTime() - new Date(b.birth_date).getTime();
+          }
+          if (a.birth_date) return -1;
+          if (b.birth_date) return 1;
+        }
         
         return 0; // maintain relative order
       });
@@ -102,6 +111,7 @@ const BalkanFamilyTree = forwardRef<BalkanFamilyTreeRef, BalkanFamilyTreeProps>(
           name: displayName,
           gender: m.gender,
           birthDate: m.birth_date ? new Date(m.birth_date).getFullYear().toString() : '',
+          orderId: m.birth_date ? new Date(m.birth_date).getTime() : 9999999999999, // Sort fallback
           img: m.photo_url || '',
           tags: [m.gender]
         };
@@ -118,6 +128,7 @@ const BalkanFamilyTree = forwardRef<BalkanFamilyTreeRef, BalkanFamilyTreeProps>(
 
       try {
         internalTreeRef.current = new FamilyTree(treeRef.current, {
+            orderBy: "orderId",
             nodeBinding: {
                 field_0: "name",
                 field_1: "birthDate",
