@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { getSupabase } from '../../../lib/supabase';
-import { Plus, Users, GitBranch, ArrowLeft } from 'lucide-react';
+import { Plus, Users, GitBranch, ArrowLeft, Search } from 'lucide-react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useUser } from '../../../hooks/use-user';
@@ -28,6 +28,7 @@ export default function FamilyTreePage() {
   const [overrideViewMode, setOverrideViewMode] = useState<'full' | 'grouped' | null>(null);
   const viewMode = overrideViewMode || (isAdmin ? 'full' : 'grouped');
   const [selectedFamily, setSelectedFamily] = useState<NuclearFamily | null>(null);
+  const [familySearchQuery, setFamilySearchQuery] = useState('');
 
   const [customModalMemberId, setCustomModalMemberId] = useState<string | null>(null);
   const activeMember = useMemo(() => members.find(m => m.id === customModalMemberId), [members, customModalMemberId]);
@@ -185,10 +186,24 @@ export default function FamilyTreePage() {
               </Link>
           </div>
         ) : viewMode === 'grouped' && !selectedFamily ? (
-          <div className="p-6 h-full overflow-auto">
-            <h2 className="text-lg font-bold text-slate-800 mb-6">Pilih Keluarga Inti</h2>
+          <div className="p-6 h-full overflow-auto flex flex-col">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+               <h2 className="text-lg font-bold text-slate-800 shrink-0">Pilih Keluarga Inti</h2>
+               <div className="relative w-full md:w-96">
+                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                   <Search className="w-4 h-4" />
+                 </span>
+                 <input 
+                   type="text" 
+                   value={familySearchQuery}
+                   onChange={(e) => setFamilySearchQuery(e.target.value)}
+                   placeholder="Cari keluarga (mis. nama ayah/ibu)..." 
+                   className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none transition-all placeholder:text-slate-400 font-medium text-slate-700" 
+                 />
+               </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {families.map(fam => (
+              {families.filter(fam => fam.name.toLowerCase().includes(familySearchQuery.toLowerCase())).map(fam => (
                 <button
                   key={fam.id}
                   onClick={() => setSelectedFamily(fam)}
@@ -243,6 +258,7 @@ export default function FamilyTreePage() {
                 onNodeClick={(id) => {
                    setCustomModalMemberId(id);
                 }}
+                enableSearch={viewMode === 'full'}
               />
             </div>
           </div>
