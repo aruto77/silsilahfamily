@@ -39,22 +39,27 @@ const BalkanFamilyTree = forwardRef<BalkanFamilyTreeRef, BalkanFamilyTreeProps>(
     useImperativeHandle(ref, () => ({
       exportPdf: () => {
         if (internalTreeRef.current) {
-          const svg = treeRef.current?.querySelector('svg');
-          if (svg && !svg.querySelector('#export-styles')) {
-            const style = document.createElement('style');
-            style.id = 'export-styles';
-            style.innerHTML = `
-              .female rect { fill: #FF0090 !important; stroke: #FF0090 !important; stroke-width: 2px !important; }
-              .female text { fill: #ffffff !important; }
-            `;
-            svg.insertBefore(style, svg.firstChild);
+          try {
+            const svg = treeRef.current?.querySelector('svg');
+            if (svg && !svg.querySelector('#export-styles')) {
+              const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+              style.id = 'export-styles';
+              style.innerHTML = `
+                .female rect { fill: #FF0090 !important; stroke: #FF0090 !important; stroke-width: 2px !important; }
+                .female text { fill: #ffffff !important; }
+              `;
+              svg.insertBefore(style, svg.firstChild);
+            }
+            
+            internalTreeRef.current.exportPDF({
+              format: 'A0',
+              orientation: 'Landscape',
+              padding: 50
+            });
+          } catch (err) {
+            console.error("Failed to export PDF:", err);
+            alert('Terjadi kesalahan saat mengekspor PDF.');
           }
-          
-          internalTreeRef.current.exportPDF({
-            format: 'A0',
-            orientation: 'Landscape',
-            padding: 50
-          });
         }
       }
     }));
