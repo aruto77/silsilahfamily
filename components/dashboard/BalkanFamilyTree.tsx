@@ -38,27 +38,31 @@ const BalkanFamilyTree = forwardRef<BalkanFamilyTreeRef, BalkanFamilyTreeProps>(
 
     useImperativeHandle(ref, () => ({
       exportPdf: () => {
+        // Fallback to clicking the native generated export button if programmatic fails
+        const triggerNativeExport = () => {
+           const bftPdfEl = document.querySelector('svg[data-export-pdf]');
+           if (bftPdfEl) {
+              const rect = bftPdfEl.getBoundingClientRect();
+              bftPdfEl.dispatchEvent(new MouseEvent('click', {
+                view: window,
+                bubbles: true,
+                cancelable: true,
+                clientX: rect.left,
+                clientY: rect.top
+              }));
+           }
+        };
+
         if (internalTreeRef.current) {
           try {
-            const svg = treeRef.current?.querySelector('svg');
-            if (svg && !svg.querySelector('#export-styles')) {
-              const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
-              style.id = 'export-styles';
-              style.innerHTML = `
-                .female rect { fill: #FF0090 !important; stroke: #FF0090 !important; stroke-width: 2px !important; }
-                .female text { fill: #ffffff !important; }
-              `;
-              svg.insertBefore(style, svg.firstChild);
-            }
-            
-            internalTreeRef.current.exportPDF({
-              format: 'A0',
-              orientation: 'Landscape',
-              padding: 50
-            });
-          } catch (err) {
-            console.error("Failed to export PDF:", err);
-            alert('Terjadi kesalahan saat mengekspor PDF.');
+             internalTreeRef.current.exportPDF({
+                format: "A2",
+                orientation: "landscape",
+                margin: [20, 20, 20, 20]
+             });
+          } catch(e) {
+             console.error("FamilyTree export failed:", e);
+             triggerNativeExport();
           }
         }
       }
@@ -153,11 +157,18 @@ const BalkanFamilyTree = forwardRef<BalkanFamilyTreeRef, BalkanFamilyTreeProps>(
             ...(enableSearch ? { searchFields: ["name"] } : {}),
             scaleInitial: FamilyTree.match.boundary,
             mouseScrool: FamilyTree.action.zoom,
+            exportPDF: {
+                format: "A2",
+                orientation: "landscape",
+                margin: [20, 20, 20, 20]
+            },
             toolbar: {
                 zoom: true,
-                fit: true
+                fit: true,
+                pdf: true,
+                fullScreen: true
             }
-        });
+        } as any);
 
         if (onNodeClick) {
            internalTreeRef.current.on('click', function(sender: any, args: any) {
@@ -167,6 +178,20 @@ const BalkanFamilyTree = forwardRef<BalkanFamilyTreeRef, BalkanFamilyTreeProps>(
         }
         
         internalTreeRef.current.load(nodes);
+        
+        // Inject styles directly into SVG so export picks them up
+        setTimeout(() => {
+          const svg = treeRef.current?.querySelector('svg');
+          if (svg && !svg.querySelector('#export-styles')) {
+            const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+            style.id = 'export-styles';
+            style.innerHTML = `
+              .female rect { fill: #FF0090 !important; stroke: #FF0090 !important; stroke-width: 2px !important; }
+              .female text { fill: #ffffff !important; }
+            `;
+            svg.insertBefore(style, svg.firstChild);
+          }
+        }, 500);
         
       } catch (e) {
         console.error("FamilyTree initialization error", e);
@@ -184,16 +209,6 @@ const BalkanFamilyTree = forwardRef<BalkanFamilyTreeRef, BalkanFamilyTreeProps>(
 
     return (
       <div className="w-full h-full border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 relative min-h-[600px]">
-        <style>{`
-          .female rect {
-            fill: #FF0090 !important;
-            stroke: #FF0090 !important;
-            stroke-width: 2px !important;
-          }
-          .female text {
-            fill: #ffffff !important;
-          }
-        `}</style>
         <div id="tree" ref={treeRef} className="w-full h-full"></div>
       </div>
     );
