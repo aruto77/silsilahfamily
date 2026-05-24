@@ -29,6 +29,7 @@ export default function FamilyTreePage() {
   const viewMode = overrideViewMode || (isAdmin ? 'full' : 'grouped');
   const [selectedFamily, setSelectedFamily] = useState<NuclearFamily | null>(null);
   const [familySearchQuery, setFamilySearchQuery] = useState('');
+  const [initializedFromUrl, setInitializedFromUrl] = useState(false);
 
   const [customModalMemberId, setCustomModalMemberId] = useState<string | null>(null);
   const activeMember = useMemo(() => members.find(m => m.id === customModalMemberId), [members, customModalMemberId]);
@@ -100,6 +101,27 @@ export default function FamilyTreePage() {
 
     return fams;
   }, [members, marriages]);
+
+  useEffect(() => {
+    if (!initializedFromUrl && families.length > 0 && typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const urlView = searchParams.get('view');
+      const urlFamily = searchParams.get('family');
+      
+      if (urlView === 'grouped' || urlView === 'full') {
+        setOverrideViewMode(urlView);
+      }
+      
+      if (urlView === 'grouped' && urlFamily) {
+        const found = families.find(f => f.id === urlFamily);
+        if (found) {
+          setSelectedFamily(found);
+        }
+      }
+      
+      setInitializedFromUrl(true);
+    }
+  }, [families, initializedFromUrl]);
 
 // Add formatName locally 
   const formatName = (m: any) => {
@@ -280,7 +302,7 @@ export default function FamilyTreePage() {
             
             <div className="p-6 space-y-4">
               <Link
-                  href={`/dashboard/family-tree/${activeMember.id}`}
+                  href={`/dashboard/family-tree/${activeMember.id}${selectedFamily ? `?view=grouped&family=${selectedFamily.id}` : ''}`}
                   className="w-full inline-flex items-center justify-center px-4 py-2.5 bg-indigo-50 text-indigo-700 font-medium rounded-xl hover:bg-indigo-100 transition-colors"
                 >
                   Lihat Detail
