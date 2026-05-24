@@ -15,6 +15,13 @@ export default function EditMemberPage() {
   const [loading, setLoading] = useState(false);
   const [initialFetchLoading, setInitialFetchLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [backUrl, setBackUrl] = useState(`/dashboard/family-tree/${id}`);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setBackUrl(`/dashboard/family-tree/${id}${window.location.search}`);
+    }
+  }, [id]);
 
   const [formData, setFormData] = useState({
     full_name: '',
@@ -145,7 +152,7 @@ export default function EditMemberPage() {
            details: { info: `Mengubah data anggota: ${realData.full_name}` }
         }]);
 
-        router.replace(`/dashboard/family-tree/${id}`);
+        router.replace(backUrl);
       } else {
         // Fetch old data for diff
         const { data: oldData } = await supabase.from('family_members').select('*').eq('id', id).single();
@@ -184,7 +191,7 @@ export default function EditMemberPage() {
     <>
       <div className="mb-8">
         <Link 
-          href={`/dashboard/family-tree/${id}`} 
+          href={backUrl} 
           className="inline-flex items-center text-sm font-semibold text-slate-500 hover:text-indigo-600 transition-colors mb-4"
         >
           <ArrowLeft className="w-4 h-4 mr-1" />
@@ -346,7 +353,7 @@ export default function EditMemberPage() {
 
           <div className="flex justify-end pt-4 border-t border-slate-100 items-center space-x-4">
             <Link 
-              href={`/dashboard/family-tree/${id}`}
+              href={backUrl}
               className="text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors"
             >
               Batalkan
