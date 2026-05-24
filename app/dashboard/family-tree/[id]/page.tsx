@@ -15,8 +15,13 @@ export default function MemberProfilePage() {
   const [member, setMember] = useState<any>(null);
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [backUrl, setBackUrl] = useState("/dashboard/family-tree");
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setBackUrl("/dashboard/family-tree" + window.location.search);
+    }
+    
     async function fetchMember() {
       const supabase = getSupabase();
       
@@ -110,7 +115,7 @@ export default function MemberProfilePage() {
     return (
       <div className="text-center p-12">
         <h2 className="text-xl font-bold text-slate-800">Profil Tidak Ditemukan</h2>
-        <Link href="/dashboard/family-tree" className="mt-4 inline-block text-indigo-600 hover:text-indigo-700 font-medium">Kembali</Link>
+        <Link href={backUrl} className="mt-4 inline-block text-indigo-600 hover:text-indigo-700 font-medium">Kembali</Link>
       </div>
     );
   }
@@ -119,7 +124,7 @@ export default function MemberProfilePage() {
     <>
       <div className="mb-6">
         <Link 
-          href="/dashboard/family-tree"
+          href={backUrl}
           className="inline-flex items-center text-sm font-semibold text-slate-500 hover:text-indigo-600 transition-colors mb-4"
         >
           <ArrowLeft className="w-4 h-4 mr-1" />
@@ -149,7 +154,7 @@ export default function MemberProfilePage() {
 
             <div className="w-full flex gap-3">
               <Link 
-                href={`/dashboard/family-tree/${member.id}/edit`}
+                href={`/dashboard/family-tree/${member.id}/edit${typeof window !== 'undefined' ? window.location.search : ''}`}
                 className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-indigo-50 text-indigo-700 font-medium rounded-xl hover:bg-indigo-100 transition-colors"
                 title={profile?.role !== 'admin' ? "Ajukan perubahan untuk profil ini" : "Edit profil ini"}
               >
