@@ -33,6 +33,7 @@ export default function NewMemberPage() {
   });
 
   const [members, setMembers] = useState<any[]>([]);
+  const [marriages, setMarriages] = useState<any[]>([]);
   const [relatedMemberId, setRelatedMemberId] = useState<string>('');
   const [relationType, setRelationType] = useState<'anak_dari' | 'orang_tua_dari' | 'pasangan_dari'>('anak_dari');
   const [dataLoading, setDataLoading] = useState(true);
@@ -47,8 +48,10 @@ export default function NewMemberPage() {
       const supabase = getSupabase();
       
       const { data: membersRes } = await supabase.from('family_members').select('*').order('full_name');
+      const { data: marriagesRes } = await supabase.from('marriages').select('*').eq('status', 'active');
       
       setMembers(membersRes || []);
+      setMarriages(marriagesRes || []);
       setDataLoading(false);
     }
     fetchData();
@@ -198,10 +201,22 @@ export default function NewMemberPage() {
             if (related.gender === 'male') {
                payload.father_id = related.id;
                relatedParentUpdate.father_id = related.id;
+               // Find spouse to auto-link
+               const marriage = marriages.find(m => m.husband_id === related.id);
+               if (marriage) {
+                 payload.mother_id = marriage.wife_id;
+                 relatedParentUpdate.mother_id = marriage.wife_id;
+               }
             }
             if (related.gender === 'female') {
                payload.mother_id = related.id;
                relatedParentUpdate.mother_id = related.id;
+               // Find spouse to auto-link
+               const marriage = marriages.find(m => m.wife_id === related.id);
+               if (marriage) {
+                 payload.father_id = marriage.husband_id;
+                 relatedParentUpdate.father_id = marriage.husband_id;
+               }
             }
             
             // If they are a child of 'related' and they chose to also add a spouse, the spouse doesn't get related.id as parent.
