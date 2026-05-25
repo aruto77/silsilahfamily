@@ -281,6 +281,7 @@ export default function FamilyTreePage() {
                    setCustomModalMemberId(id);
                 }}
                 enableSearch={viewMode === 'full'}
+                initialZoom={viewMode === 'grouped' ? 0.75 : undefined}
               />
             </div>
           </div>
