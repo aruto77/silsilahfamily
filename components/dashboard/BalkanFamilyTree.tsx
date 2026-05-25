@@ -26,6 +26,7 @@ interface BalkanFamilyTreeProps {
   marriages: Marriage[];
   onNodeClick?: (id: string) => void;
   enableSearch?: boolean;
+  initialZoom?: number | string;
 }
 
 export interface BalkanFamilyTreeRef {
@@ -33,7 +34,7 @@ export interface BalkanFamilyTreeRef {
 }
 
 const BalkanFamilyTree = forwardRef<BalkanFamilyTreeRef, BalkanFamilyTreeProps>(
-  ({ members, marriages, onNodeClick, enableSearch = true }, ref) => {
+  ({ members, marriages, onNodeClick, enableSearch = true, initialZoom }, ref) => {
     const treeRef = useRef<HTMLDivElement>(null);
     const internalTreeRef = useRef<any>(null);
     
@@ -178,7 +179,7 @@ const BalkanFamilyTree = forwardRef<BalkanFamilyTreeRef, BalkanFamilyTreeProps>(
                 img_0: "img"
             },
             ...(enableSearch ? { searchFields: ["name"] } : {}),
-            scaleInitial: FamilyTree.match.boundary,
+            scaleInitial: initialZoom !== undefined ? initialZoom : FamilyTree.match.boundary,
             mouseScrool: FamilyTree.action.zoom,
             exportPDF: {
                 format: "A2",
