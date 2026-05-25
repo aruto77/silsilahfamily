@@ -107,8 +107,15 @@ export default function EditMemberPage() {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+
+  const handlePreview = (e: React.FormEvent) => {
     e.preventDefault();
+    setShowPreviewModal(true);
+  };
+
+  const handleConfirmSave = async () => {
+    setShowPreviewModal(false);
     setLoading(true);
     setError(null);
 
@@ -206,7 +213,7 @@ export default function EditMemberPage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm max-w-3xl">
-        <form onSubmit={handleSubmit} className="p-8">
+        <form onSubmit={handlePreview} className="p-8">
           {error && (
             <div className="mb-6 p-4 bg-rose-50 border border-rose-100 text-rose-600 text-sm font-medium rounded-xl">
               {error}
@@ -373,6 +380,59 @@ export default function EditMemberPage() {
           </div>
         </form>
       </div>
+
+      {/* Preview Modal */}
+      {showPreviewModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-slate-100 shrink-0">
+              <h2 className="text-xl font-bold text-slate-800 tracking-tight">Konfirmasi Perubahan Data</h2>
+              <p className="text-sm text-slate-500 mt-1">Harap periksa kembali perubahan data di bawah ini sebelum menyimpan.</p>
+            </div>
+            
+            <div className="p-6 overflow-y-auto space-y-6">
+              <div>
+                <h3 className="font-semibold text-slate-800 mb-3 border-b border-slate-100 pb-2">Data Anggota</h3>
+                <div className="grid grid-cols-2 gap-y-3 text-sm">
+                  <div className="text-slate-500">Nama Lengkap:</div>
+                  <div className="font-medium text-slate-800">{formData.full_name || '-'}</div>
+                  <div className="text-slate-500">Jenis Kelamin:</div>
+                  <div className="font-medium text-slate-800">{formData.gender === 'male' ? 'Laki-Laki' : 'Perempuan'}</div>
+                  <div className="text-slate-500">Tanggal Lahir:</div>
+                  <div className="font-medium text-slate-800">{formData.birth_date || '-'}</div>
+                  <div className="text-slate-500">Tanggal Wafat:</div>
+                  <div className="font-medium text-slate-800">{formData.death_date || '-'}</div>
+                  <div className="text-slate-500">Anak Angkat/Tiri:</div>
+                  <div className="font-medium text-slate-800">{formData.is_adopted ? 'Ya' : 'Tidak'}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowPreviewModal(false)}
+                className="px-4 py-2 bg-white border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
+              >
+                Cek Kembali
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmSave}
+                disabled={loading}
+                className="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                Konfirmasi & Simpan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
