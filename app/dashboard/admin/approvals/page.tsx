@@ -167,7 +167,7 @@ export default function AdminApprovalsPage() {
                       <span className="font-medium text-slate-700 capitalize bg-slate-100 px-2 py-1 rounded-md text-xs">
                         {req.target_table === 'family_members' ? 'Anggota Keluarga' : req.target_table}
                       </span>
-                      {req.target_id === '00000000-0000-0000-0000-000000000000' && (
+                      {(!req.target_id || req.target_id === '00000000-0000-0000-0000-000000000000') && (
                         <span className="ml-2 bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 rounded-full font-bold">BARU</span>
                       )}
                     </td>
