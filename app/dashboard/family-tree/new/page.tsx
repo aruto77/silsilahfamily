@@ -316,12 +316,14 @@ export default function NewMemberPage() {
         const requestsToInsert = [
           {
             requester_id: profile?.id,
+            target_id: '00000000-0000-0000-0000-000000000000',
             target_table: 'family_members',
             new_data: payload, // note: payload includes _marriage_request, handled in approval!
             status: 'pending'
           },
           ...extraPayloads.map(ex => ({
             requester_id: profile?.id,
+            target_id: '00000000-0000-0000-0000-000000000000',
             target_table: 'family_members',
             new_data: ex,
             status: 'pending'
