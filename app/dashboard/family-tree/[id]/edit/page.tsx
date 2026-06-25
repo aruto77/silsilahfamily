@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { getSupabase } from '../../../../../lib/supabase';
 import { useUser } from '../../../../../hooks/use-user';
 import { ArrowLeft, Save } from 'lucide-react';
@@ -15,13 +15,8 @@ export default function EditMemberPage() {
   const [loading, setLoading] = useState(false);
   const [initialFetchLoading, setInitialFetchLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [backUrl, setBackUrl] = useState(`/dashboard/family-tree/${id}`);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setBackUrl(`/dashboard/family-tree/${id}${window.location.search}`);
-    }
-  }, [id]);
+  const searchParams = useSearchParams();
+  const backUrl = `/dashboard/family-tree/${id}?${searchParams.toString()}`;
 
   const [formData, setFormData] = useState({
     full_name: '',
