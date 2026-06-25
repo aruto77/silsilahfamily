@@ -3,25 +3,22 @@
 import React, { useEffect, useState } from 'react';
 import { getSupabase } from '../../../../lib/supabase';
 import { useUser } from '../../../../hooks/use-user';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, User as UserIcon, Heart, FileEdit } from 'lucide-react';
 import Link from 'next/link';
 
 export default function MemberProfilePage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = params.id as string;
   const router = useRouter();
   const { profile } = useUser();
   const [member, setMember] = useState<any>(null);
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [backUrl, setBackUrl] = useState("/dashboard/family-tree");
+  const backUrl = "/dashboard/family-tree?" + searchParams.toString();
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setBackUrl("/dashboard/family-tree" + window.location.search);
-    }
-    
     async function fetchMember() {
       const supabase = getSupabase();
       
