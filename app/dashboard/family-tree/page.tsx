@@ -109,21 +109,20 @@ export default function FamilyTreePage() {
       const urlView = searchParams.get('view');
       const urlFamily = searchParams.get('family');
       
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (urlView === 'grouped' || urlView === 'full') {
-        setOverrideViewMode(urlView);
-      }
-      
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (urlView === 'grouped' && urlFamily) {
-        const found = families.find(f => f.id === urlFamily);
-        if (found) {
-          setSelectedFamily(found);
+      setTimeout(() => {
+        if (urlView === 'grouped' || urlView === 'full') {
+          setOverrideViewMode(urlView);
         }
-      }
-      
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setInitializedFromUrl(true);
+        
+        if (urlView === 'grouped' && urlFamily) {
+          const found = families.find(f => f.id === urlFamily);
+          if (found) {
+            setSelectedFamily(found);
+          }
+        }
+        
+        setInitializedFromUrl(true);
+      }, 0);
     }
   }, [families, initializedFromUrl, searchParams]);
 
