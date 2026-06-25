@@ -172,6 +172,7 @@ export default function NewMemberPage() {
   };
 
   const handleConfirmSave = async () => {
+    setShowPreviewModal(false);
     setLoading(true);
     setError(null);
 
@@ -312,14 +313,14 @@ export default function NewMemberPage() {
         const requestsToInsert = [
           {
             requester_id: profile?.id,
-            target_id: '00000000-0000-0000-0000-000000000000', // Dummy UUID for new records
+            target_id: null,
             target_table: 'family_members',
             new_data: payload, // note: payload includes _marriage_request, handled in approval!
             status: 'pending'
           },
           ...extraPayloads.map(ex => ({
             requester_id: profile?.id,
-            target_id: '00000000-0000-0000-0000-000000000000',
+            target_id: null,
             target_table: 'family_members',
             new_data: ex,
             status: 'pending'
