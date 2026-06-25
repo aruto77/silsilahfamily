@@ -6,6 +6,7 @@ import { Plus, Users, GitBranch, ArrowLeft, Search } from 'lucide-react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useUser } from '../../../hooks/use-user';
+import { useSearchParams } from 'next/navigation';
 
 const BalkanFamilyTree = dynamic(() => import('../../../components/dashboard/BalkanFamilyTree'), { ssr: false });
 
@@ -19,6 +20,7 @@ interface NuclearFamily {
 
 export default function FamilyTreePage() {
   const { profile } = useUser();
+  const searchParams = useSearchParams();
   const isAdmin = profile?.role === 'admin';
   
   const [members, setMembers] = useState<any[]>([]);
@@ -103,15 +105,16 @@ export default function FamilyTreePage() {
   }, [members, marriages]);
 
   useEffect(() => {
-    if (!initializedFromUrl && families.length > 0 && typeof window !== 'undefined') {
-      const searchParams = new URLSearchParams(window.location.search);
+    if (!initializedFromUrl && families.length > 0) {
       const urlView = searchParams.get('view');
       const urlFamily = searchParams.get('family');
       
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (urlView === 'grouped' || urlView === 'full') {
         setOverrideViewMode(urlView);
       }
       
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (urlView === 'grouped' && urlFamily) {
         const found = families.find(f => f.id === urlFamily);
         if (found) {
@@ -119,9 +122,10 @@ export default function FamilyTreePage() {
         }
       }
       
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setInitializedFromUrl(true);
     }
-  }, [families, initializedFromUrl]);
+  }, [families, initializedFromUrl, searchParams]);
 
 // Add formatName locally 
   const formatName = (m: any) => {
