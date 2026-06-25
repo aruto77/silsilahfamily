@@ -229,7 +229,7 @@ const BalkanFamilyTree = forwardRef<BalkanFamilyTreeRef, BalkanFamilyTreeProps>(
           internalTreeRef.current = null;
         }
       };
-    }, [members, marriages, onNodeClick, enableSearch]);
+    }, [members, marriages, onNodeClick, enableSearch, initialZoom]);
 
     return (
       <div className="w-full h-full border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 relative min-h-[600px]">
