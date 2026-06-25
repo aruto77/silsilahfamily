@@ -165,6 +165,7 @@ export default function NewMemberPage() {
   };
 
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const handlePreview = (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,6 +176,7 @@ export default function NewMemberPage() {
     setShowPreviewModal(false);
     setLoading(true);
     setError(null);
+    setSuccessMsg(null);
 
     try {
       const supabase = getSupabase();
@@ -307,20 +309,19 @@ export default function NewMemberPage() {
            details: { info: `Menambahkan anggota keluarga baru: ${data.full_name}`, relatedTo: relatedMemberId }
         }]);
 
-        router.push(`/dashboard/family-tree/${data.id}`);
+        setSuccessMsg('Anggota keluarga baru berhasil ditambahkan.');
+        resetForm();
       } else {
         // Members must create a change request
         const requestsToInsert = [
           {
             requester_id: profile?.id,
-            target_id: null,
             target_table: 'family_members',
             new_data: payload, // note: payload includes _marriage_request, handled in approval!
             status: 'pending'
           },
           ...extraPayloads.map(ex => ({
             requester_id: profile?.id,
-            target_id: null,
             target_table: 'family_members',
             new_data: ex,
             status: 'pending'
@@ -332,13 +333,37 @@ export default function NewMemberPage() {
           .insert(requestsToInsert);
 
         if (requestError) throw requestError;
-        router.push('/dashboard/my-requests');
+        setSuccessMsg('Usulan data anggota baru berhasil dikirim dan menunggu persetujuan admin.');
+        resetForm();
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred while saving.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      full_name: '',
+      gender: 'male',
+      birth_date: '',
+      death_date: '',
+      photo_url: '',
+      is_adopted: false,
+    });
+    setSpouseData({
+      full_name: '',
+      gender: 'female',
+      birth_date: '',
+      death_date: '',
+      photo_url: '',
+      is_adopted: false,
+    });
+    setAddSpouse(false);
+    setRelationType('anak_dari');
+    setRelatedMemberId('');
+    setAdditionalChildren([]);
   };
 
   return (
@@ -364,6 +389,11 @@ export default function NewMemberPage() {
           {error && (
             <div className="mb-6 p-4 bg-rose-50 border border-rose-100 text-rose-600 text-sm font-medium rounded-xl">
               {error}
+            </div>
+          )}
+          {successMsg && (
+            <div className="mb-6 p-4 bg-emerald-50 border border-emerald-100 text-emerald-700 text-sm font-medium rounded-xl">
+              {successMsg}
             </div>
           )}
 
